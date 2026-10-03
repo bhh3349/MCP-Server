@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网关 AI 配对测试（HTTP）</title>
+<style>
+  body { font-family: system-ui; max-width: 600px; margin: 40px auto; padding: 0 20px; }
+  input, button { font-size: 16px; padding: 8px 12px; margin: 4px 0; }
+  input { width: 100%; box-sizing: border-box; }
+  button { cursor: pointer; margin-right: 8px; }
+  #log { background: #f5f5f5; padding: 12px; border-radius: 8px; white-space: pre-wrap; margin-top: 16px; min-height: 100px; max-height: 400px; overflow-y: auto; }
+  .ok { color: green; } .err { color: red; }
+</style>
+</head>
+<body>
+<h2>网关 AI 配对测试（HTTP）</h2>
+<label>网关地址（http）</label>
+<input id="base" value="http://23.251.34.248:8080">
+<label>配对码（12位）</label>
+<input id="code" placeholder="从 npm run channel 获取">
+<div>
+  <button onclick="claim()">1. 认领配对码</button>
+  <button onclick="poll()">2. 轮询消息</button>
+</div>
+<div id="log"></div>
+<script>
+let channelId = null;
+const base = () => document.getElementById('base').value.trim().replace(/\/$/, '');
+function log(msg, cls) {
+  const el = document.getElementById('log');
+  el.innerHTML += `<span class="${cls||''}">${msg}</span>\n`;
+  el.scrollTop = el.scrollHeight;
+}
+async function claim() {
+  const code = document.getElementById('code').value.trim();
+  if (!code) { log('请输入配对码', 'err'); return; }
+  log('POST ' + base() + '/v1/ai/claim …');
+  try {
+    const r = await fetch(base() + '/v1/ai/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pairingCode: code, ai: { name: 'browser-test' } }),
+    });
+    const d = await r.json();
+    if (r.ok) {
+      channelId = d.channelId;
+      log('✓✓ 配对成功! channelId=' + channelId, 'ok');
+      log('现在可以点"轮询消息"收网关推送');
+    } else {
+      log('✘ 配对失败: ' + (d.error || r.status), 'err');
+    }
+  } catch (e) { log('✘ 请求失败: ' + e.message, 'err'); }
+}
+async function poll() {
+  if (!channelId) { log('先认领配对码', 'err'); return; }
+  log('GET /v1/ai/poll?channelId=' + channelId.slice(0,12) + '…（长轮询25s）');
+  try {
+    const r = await fetch(base() + '/v1/ai/poll?channelId=' + encodeURIComponent(channelId));
+    const d = await r.json();
+    if (r.ok) {
+      log('收到 ' + d.messages.length + ' 条消息:', 'ok');
+      d.messages.forEach(m => log('  ' + JSON.stringify(m).slice(0, 200)));
+    } else {
+      log('✘ 轮询失败: ' + (d.error || r.status), 'err');
+    }
+  } catch (e) { log('✘ 请求失败: ' + e.message, 'err'); }
+}
+</script>
+</body>
+</html>
