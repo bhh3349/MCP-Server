@@ -1,6 +1,6 @@
 /**
  * clipboard_read / clipboard_write: 跨平台剪贴板。
- * Windows: PowerShell Get-Clipboard / Set-Clipboard
+ * Windows: Git Bash 的 /dev/clipboard（不用 PowerShell）
  * macOS: pbpaste / pbcopy
  * Linux: xclip / xsel（需安装，缺失时报错提示）
  */
@@ -8,6 +8,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { platform } from "node:os";
 import { z } from "zod";
+import { findGitBash } from "./shell.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -31,7 +32,9 @@ export async function clipboardRead(_args: z.infer<typeof ClipboardReadInput>) {
   const p = platform();
   let text: string;
   if (p === "win32") {
-    text = await run("powershell", ["-NoProfile", "-Command", "Get-Clipboard -Raw"]);
+    const bash = findGitBash();
+    if (!bash) throw new Error("clipboard-failed: 未找到 Git Bash");
+    text = await run(bash, ["-c", "cat /dev/clipboard"]);
   } else if (p === "darwin") {
     text = await run("pbpaste", []);
   } else {
@@ -52,7 +55,9 @@ export async function clipboardWrite(args: z.infer<typeof ClipboardWriteInput>) 
   const { text } = ClipboardWriteInput.parse(args);
   const p = platform();
   if (p === "win32") {
-    await run("powershell", ["-NoProfile", "-Command", "Set-Clipboard"], text);
+    const bash = findGitBash();
+    if (!bash) throw new Error("clipboard-failed: 未找到 Git Bash");
+    await run(bash, ["-c", "cat > /dev/clipboard"], text);
   } else if (p === "darwin") {
     await run("pbcopy", [], text);
   } else {

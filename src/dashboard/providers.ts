@@ -1,1 +1,106 @@
-LyoqCiAqIOaooeWei+S+m+W6lOWVhumFjee9ruWtmOWCqO+8mn4vLm1jcC1zZXJ2ZXIvYWdlbnQuanNvbu+8iDYwMCDmnYPpmZDvvIkKICogQVBJIGtleSDlj6rlrZjmnI3liqHnq6/vvIznu53kuI3ov5Tlm57nu5nliY3nq6/jgIIKICovCmltcG9ydCB7IHJlYWRGaWxlLCB3cml0ZUZpbGUsIG1rZGlyLCBjaG1vZCB9IGZyb20gIm5vZGU6ZnMvcHJvbWlzZXMiOwppbXBvcnQgeyBqb2luIH0gZnJvbSAibm9kZTpwYXRoIjsKaW1wb3J0IHsgaG9tZWRpciB9IGZyb20gIm5vZGU6b3MiOwppbXBvcnQgeyByYW5kb21VVUlEIH0gZnJvbSAibm9kZTpjcnlwdG8iOwoKZXhwb3J0IGludGVyZmFjZSBNb2RlbFByb3ZpZGVyIHsKICBpZDogc3RyaW5nOwogIG5hbWU6IHN0cmluZzsKICAvKiogb3BlbmFpLWNvbXBhdGlibGUg6KaG55uWIE9wZW5BSS9EZWVwU2Vlay/mnIjkuYvmmpfpnaLnrYnvvJthbnRocm9waWMg6LWw5a6Y5pa5IEFQSSAqLwogIHR5cGU6ICJvcGVuYWkiIHwgImFudGhyb3BpYyI7CiAgYmFzZVVybD86IHN0cmluZzsKICBhcGlLZXk6IHN0cmluZzsKICBtb2RlbDogc3RyaW5nOwogIGVuYWJsZWQ6IGJvb2xlYW47Cn0KCi8qKiDov5Tlm57nu5nliY3nq6/nmoTlronlhajop4blm77vvIjkuI3lkKsga2V577yJICovCmV4cG9ydCBpbnRlcmZhY2UgUHJvdmlkZXJWaWV3IHsKICBpZDogc3RyaW5nOwogIG5hbWU6IHN0cmluZzsKICB0eXBlOiBzdHJpbmc7CiAgYmFzZVVybD86IHN0cmluZyB8IHVuZGVmaW5lZDsKICBtb2RlbDogc3RyaW5nOwogIGVuYWJsZWQ6IGJvb2xlYW47CiAgaGFzS2V5OiBib29sZWFuOwp9Cgpjb25zdCBESVIgPSBqb2luKGhvbWVkaXIoKSwgIi5tY3Atc2VydmVyIik7CmNvbnN0IFBBVEggPSBqb2luKERJUiwgImFnZW50Lmpzb24iKTsKCmludGVyZmFjZSBTdG9yZSB7IHByb3ZpZGVyczogTW9kZWxQcm92aWRlcltdOyBhY3RpdmVJZD86IHN0cmluZyB8IHVuZGVmaW5lZCB9Cgphc3luYyBmdW5jdGlvbiBsb2FkKCk6IFByb21pc2U8U3RvcmU+IHsKICB0cnkgewogICAgY29uc3QgcmF3ID0gYXdhaXQgcmVhZEZpbGUoUEFUSCwgInV0Zi04Iik7CiAgICBjb25zdCBzID0gSlNPTi5wYXJzZShyYXcpIGFzIFN0b3JlOwogICAgcmV0dXJuIHsgcHJvdmlkZXJzOiBzLnByb3ZpZGVycyA/PyBbXSwgYWN0aXZlSWQ6IHMuYWN0aXZlSWQgfTsKICB9IGNhdGNoIHsKICAgIHJldHVybiB7IHByb3ZpZGVyczogW10gfTsKICB9Cn0KCmFzeW5jIGZ1bmN0aW9uIHNhdmUoczogU3RvcmUpOiBQcm9taXNlPHZvaWQ+IHsKICBhd2FpdCBta2RpcihESVIsIHsgcmVjdXJzaXZlOiB0cnVlIH0pOwogIGF3YWl0IHdyaXRlRmlsZShQQVRILCBKU09OLnN0cmluZ2lmeShzLCBudWxsLCAyKSwgeyBtb2RlOiAwbzYwMCB9KTsKICB0cnkgeyBhd2FpdCBjaG1vZChQQVRILCAwbzYwMCk7IH0gY2F0Y2ggeyAvKiB3aW5kb3dzIOW/veeVpSAqLyB9Cn0KCmNvbnN0IHZpZXcgPSAocDogTW9kZWxQcm92aWRlcik6IFByb3ZpZGVyVmlldyA9PiAoewogIGlkOiBwLmlkLCBuYW1lOiBwLm5hbWUsIHR5cGU6IHAudHlwZSwgYmFzZVVybDogcC5iYXNlVXJsLAogIG1vZGVsOiBwLm1vZGVsLCBlbmFibGVkOiBwLmVuYWJsZWQsIGhhc0tleTogISFwLmFwaUtleSwKfSk7CgpleHBvcnQgYXN5bmMgZnVuY3Rpb24gbGlzdFByb3ZpZGVycygpOiBQcm9taXNlPFByb3ZpZGVyVmlld1tdPiB7CiAgcmV0dXJuIChhd2FpdCBsb2FkKCkpLnByb3ZpZGVycy5tYXAodmlldyk7Cn0KCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBnZXRQcm92aWRlcihpZDogc3RyaW5nKTogUHJvbWlzZTxNb2RlbFByb3ZpZGVyIHwgdW5kZWZpbmVkPiB7CiAgcmV0dXJuIChhd2FpdCBsb2FkKCkpLnByb3ZpZGVycy5maW5kKChwKSA9PiBwLmlkID09PSBpZCk7Cn0KCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBnZXRBY3RpdmVQcm92aWRlcigpOiBQcm9taXNlPE1vZGVsUHJvdmlkZXIgfCB1bmRlZmluZWQ+IHsKICBjb25zdCBzID0gYXdhaXQgbG9hZCgpOwogIHJldHVybiBzLnByb3ZpZGVycy5maW5kKChwKSA9PiBwLmlkID09PSBzLmFjdGl2ZUlkICYmIHAuZW5hYmxlZCkgPz8gcy5wcm92aWRlcnMuZmluZCgocCkgPT4gcC5lbmFibGVkKTsKfQoKZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIHVwc2VydFByb3ZpZGVyKGlucHV0OiBPbWl0PE1vZGVsUHJvdmlkZXIsICJpZCI+ICYgeyBpZD86IHN0cmluZzsgYmFzZVVybD86IHN0cmluZzsgYXBpS2V5Pzogc3RyaW5nIH0pOiBQcm9taXNlPFByb3ZpZGVyVmlldz4gewogIGNvbnN0IHMgPSBhd2FpdCBsb2FkKCk7CiAgbGV0IHA6IE1vZGVsUHJvdmlkZXI7CiAgaWYgKGlucHV0LmlkKSB7CiAgICBjb25zdCBpID0gcy5wcm92aWRlcnMuZmluZEluZGV4KCh4KSA9PiB4LmlkID09PSBpbnB1dC5pZCk7CiAgICBpZiAoaSA8IDApIHRocm93IG5ldyBFcnJvcigicHJvdmlkZXIgbm90IGZvdW5kIik7CiAgICBjb25zdCBjdXIgPSBzLnByb3ZpZGVyc1tpXSE7CiAgICAvLyDnqboga2V5IOihqOekuuS4jeS/ruaUueWOnyBrZXkKICAgIHAgPSB7IC4uLmN1ciwgLi4uaW5wdXQsIGlkOiBpbnB1dC5pZCwgYXBpS2V5OiBpbnB1dC5hcGlLZXkgfHwgY3VyLmFwaUtleSB9OwogICAgcy5wcm92aWRlcnNbaV0gPSBwOwogIH0gZWxzZSB7CiAgICBwID0geyAuLi5pbnB1dCwgaWQ6IHJhbmRvbVVVSUQoKSB9OwogICAgcy5wcm92aWRlcnMucHVzaChwKTsKICB9CiAgaWYgKCFzLmFjdGl2ZUlkKSBzLmFjdGl2ZUlkID0gcC5pZDsKICBhd2FpdCBzYXZlKHMpOwogIHJldHVybiB2aWV3KHApOwp9CgpleHBvcnQgYXN5bmMgZnVuY3Rpb24gZGVsZXRlUHJvdmlkZXIoaWQ6IHN0cmluZyk6IFByb21pc2U8Ym9vbGVhbj4gewogIGNvbnN0IHMgPSBhd2FpdCBsb2FkKCk7CiAgY29uc3QgaSA9IHMucHJvdmlkZXJzLmZpbmRJbmRleCgocCkgPT4gcC5pZCA9PT0gaWQpOwogIGlmIChpIDwgMCkgcmV0dXJuIGZhbHNlOwogIHMucHJvdmlkZXJzLnNwbGljZShpLCAxKTsKICBpZiAocy5hY3RpdmVJZCA9PT0gaWQpIHMuYWN0aXZlSWQgPSBzLnByb3ZpZGVyc1swXT8uaWQ7CiAgYXdhaXQgc2F2ZShzKTsKICByZXR1cm4gdHJ1ZTsKfQoKZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIHNldEFjdGl2ZVByb3ZpZGVyKGlkOiBzdHJpbmcpOiBQcm9taXNlPGJvb2xlYW4+IHsKICBjb25zdCBzID0gYXdhaXQgbG9hZCgpOwogIGlmICghcy5wcm92aWRlcnMuc29tZSgocCkgPT4gcC5pZCA9PT0gaWQpKSByZXR1cm4gZmFsc2U7CiAgcy5hY3RpdmVJZCA9IGlkOwogIGF3YWl0IHNhdmUocyk7CiAgcmV0dXJuIHRydWU7Cn0K
+/**
+ * 模型供应商配置存储：~/.mcp-server/agent.json（600 权限）
+ * API key 只存服务端，绝不返回给前端。
+ */
+import { readFile, writeFile, mkdir, chmod } from "node:fs/promises";
+import { join } from "node:path";
+import { homedir } from "node:os";
+import { randomUUID } from "node:crypto";
+
+export interface ModelProvider {
+  id: string;
+  name: string;
+  /** openai-compatible 覆盖 OpenAI/DeepSeek/月之暗面等；anthropic 走官方 API */
+  type: "openai" | "anthropic";
+  baseUrl?: string;
+  apiKey: string;
+  model: string;
+  enabled: boolean;
+}
+
+/** 返回给前端的安全视图（不含 key） */
+export interface ProviderView {
+  id: string;
+  name: string;
+  type: string;
+  baseUrl?: string | undefined;
+  model: string;
+  enabled: boolean;
+  hasKey: boolean;
+}
+
+const DIR = join(homedir(), ".mcp-server");
+const PATH = join(DIR, "agent.json");
+
+interface Store { providers: ModelProvider[]; activeId?: string | undefined }
+
+async function load(): Promise<Store> {
+  try {
+    const raw = await readFile(PATH, "utf-8");
+    const s = JSON.parse(raw) as Store;
+    return { providers: s.providers ?? [], activeId: s.activeId };
+  } catch {
+    return { providers: [] };
+  }
+}
+
+async function save(s: Store): Promise<void> {
+  await mkdir(DIR, { recursive: true });
+  await writeFile(PATH, JSON.stringify(s, null, 2), { mode: 0o600 });
+  try { await chmod(PATH, 0o600); } catch { /* windows 忽略 */ }
+}
+
+const view = (p: ModelProvider): ProviderView => ({
+  id: p.id, name: p.name, type: p.type, baseUrl: p.baseUrl,
+  model: p.model, enabled: p.enabled, hasKey: !!p.apiKey,
+});
+
+export async function listProviders(): Promise<ProviderView[]> {
+  return (await load()).providers.map(view);
+}
+
+export async function getProvider(id: string): Promise<ModelProvider | undefined> {
+  return (await load()).providers.find((p) => p.id === id);
+}
+
+export async function getActiveProvider(): Promise<ModelProvider | undefined> {
+  const s = await load();
+  return s.providers.find((p) => p.id === s.activeId && p.enabled) ?? s.providers.find((p) => p.enabled);
+}
+
+export async function upsertProvider(input: Omit<ModelProvider, "id"> & { id?: string; baseUrl?: string; apiKey?: string }): Promise<ProviderView> {
+  const s = await load();
+  let p: ModelProvider;
+  if (input.id) {
+    const i = s.providers.findIndex((x) => x.id === input.id);
+    if (i < 0) throw new Error("provider not found");
+    const cur = s.providers[i]!;
+    // 空 key 表示不修改原 key
+    p = { ...cur, ...input, id: input.id, apiKey: input.apiKey || cur.apiKey };
+    s.providers[i] = p;
+  } else {
+    p = { ...input, id: randomUUID() };
+    s.providers.push(p);
+  }
+  if (!s.activeId) s.activeId = p.id;
+  await save(s);
+  return view(p);
+}
+
+export async function deleteProvider(id: string): Promise<boolean> {
+  const s = await load();
+  const i = s.providers.findIndex((p) => p.id === id);
+  if (i < 0) return false;
+  s.providers.splice(i, 1);
+  if (s.activeId === id) s.activeId = s.providers[0]?.id;
+  await save(s);
+  return true;
+}
+
+export async function setActiveProvider(id: string): Promise<boolean> {
+  const s = await load();
+  if (!s.providers.some((p) => p.id === id)) return false;
+  s.activeId = id;
+  await save(s);
+  return true;
+}

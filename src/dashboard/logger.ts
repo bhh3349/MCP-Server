@@ -21,6 +21,13 @@ export interface ErrorRecord extends LogEntry {
 const MAX_LOGS = 2000;
 const MAX_ERRORS = 500;
 
+const LEVEL_ORDER: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
+let threshold: LogLevel = "info";
+/** 设置日志采集阈值：低于该级别的日志不再入库（实时生效） */
+export function setLogThreshold(l: LogLevel): void { threshold = l; }
+export function getLogThreshold(): LogLevel { return threshold; }
+function pass(level: LogLevel): boolean { return LEVEL_ORDER[level] >= LEVEL_ORDER[threshold]; }
+
 class LogStore {
   private logs: LogEntry[] = [];
   private errors: ErrorRecord[] = [];
@@ -37,6 +44,7 @@ class LogStore {
       debug: console.debug.bind(console),
     };
     const push = (level: LogLevel, source: string, args: unknown[]) => {
+      if (!pass(level)) return;
       const text = args
         .map((a) => (typeof a === "string" ? a : safeStringify(a)))
         .join(" ");
@@ -48,8 +56,9 @@ class LogStore {
     console.debug = (...a: unknown[]) => { push("debug", "console", a); orig.debug(...a); };
   }
 
-  /** 工具/网关/信道等内部来源直接写入 */
-  add(entry: Omit<LogEntry, "id" | "ts"> & { ts?: number }): LogEntry {
+  /** 工具/网关/信道等内部来源直接写入（受阈值过滤） */
+  add(entry: Omit<LogEntry, "id" | "ts"> & { ts?: number }): LogEntry | null {
+    if (!pass(entry.level)) return null;
     const e: LogEntry = {
       id: ++this.seq,
       ts: entry.ts ?? Date.now(),

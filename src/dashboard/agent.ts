@@ -1,1 +1,90 @@
-LyoqCiAqIOWGheW1jOebkeaOpyBhZ2VudO+8muacjeWKoeerr+aJp+ihjCBMTE0g6LCD55SoICsg5bel5YW35b6q546v77yMQVBJIGtleSDkuI3okL3lnLDmtY/op4jlmajjgIIKICovCmltcG9ydCB0eXBlIHsgTW9kZWxQcm92aWRlciB9IGZyb20gIi4vcHJvdmlkZXJzLmpzIjsKCmV4cG9ydCBpbnRlcmZhY2UgQ2hhdE1zZyB7IHJvbGU6ICJ1c2VyIiB8ICJhc3Npc3RhbnQiOyBjb250ZW50OiBzdHJpbmcgfQoKY29uc3QgU1lTVEVNID0gYOS9oOaYryBNQ1AtU2VydmVyIOaOp+WItuS4reW/g+eahOWGheW1jOi/kOe7tOWKqeaJi+OAguS9oOebkeaOp+acrOWcsCBNQ1Ag5pyN5Yqh5Zmo55qE6L+Q6KGM54q25oCB77yM5Y+v5Lul5p+l55yL6ZSZ6K+v44CB6K+K5pat6Zeu6aKY44CB6LCD5pW05Y+C5pWw44CCCgrkvaDlj6/nlKjnmoTlt6XlhbfvvIjnlKggSlNPTiDosIPnlKjvvIzkuIDmrKHkuIDkuKrvvInvvJoKLSB7InRvb2wiOiJoZWFsdGgifSDojrflj5bnu7zlkIjlgaXlurfnirbmgIHvvIjlt6XlhbfmlbDjgIHosIPnlKjnu5/orqHjgIHmnIDov5HplJnor6/jgIHmoaXmjqXnirbmgIHvvIkKLSB7InRvb2wiOiJ0b29sX3N0YXRzIn0g6I635Y+W5ZCE5bel5YW36LCD55SoL+mUmeivr+aYjue7hgotIHsidG9vbCI6ImVycm9ycyIsImxpbWl0IjoyMH0g6I635Y+W5pyA6L+R6ZSZ6K+v5YiX6KGoCi0geyJ0b29sIjoiaXNvbGF0ZSIsIm5hbWUiOiLlt6XlhbflkI0ifSDpmpTnprvmlYXpmpzlt6XlhbfvvIjmmoLlgZzosIPnlKjvvIkKLSB7InRvb2wiOiJyZXN0b3JlIiwibmFtZSI6IuW3peWFt+WQjSJ9IOaBouWkjeiiq+malOemu+eahOW3peWFtwotIHsidG9vbCI6ImV4dGVuc2lvbnMifSDojrflj5bmianlsZXliJfooajlj4rnirbmgIEKLSB7InRvb2wiOiJleHRfdG9nZ2xlIiwibmFtZSI6IuaJqeWxleWQjSIsImVuYWJsZWQiOnRydWV9IOWQr+eUqC/npoHnlKjmianlsZUKLSB7InRvb2wiOiJicmlkZ2UiLCJvbiI6dHJ1ZX0g5byA5YWzIEJyaWRnZQotIHsidG9vbCI6ImNoYW5uZWxzIn0g6I635Y+W5L+h6YGT5YiX6KGoCi0geyJ0b29sIjoibG9nbGV2ZWwiLCJsZXZlbCI6ImRlYnVnfGluZm98d2FybnxlcnJvciJ9IOiwg+aVtOaXpeW/l+e6p+WIqwoK6KeE5YiZ77yaCjEuIOmcgOimgeaVsOaNruaXtuWFiOiwg+eUqOW3peWFt++8jOS4jeimgeeMnOa1i+OAggoyLiDlt6Xlhbfov5Tlm57lkI7vvIznlKjnroDmtIHkuK3mlofmgLvnu5Pnu5nnlKjmiLfvvIzlhbPplK7mlbDlrZfopoHlh4bnoa7jgIIKMy4g6ZqU56a75bel5YW344CB5pS56YWN572u562J5Y2x6Zmp5pON5L2c77yM5YWI6K+05piO5Y6f5Zug5YaN5omn6KGM44CCCjQuIOWPqui+k+WHuue6r+aWh+acrOWbnuWkje+8jOaIluWNleihjCBKU09OIOW3peWFt+iwg+eUqO+8jOS4jeimgea3t+WcqOS4gOi1t+OAgmA7Cgphc3luYyBmdW5jdGlvbiBjYWxsTExNKHA6IE1vZGVsUHJvdmlkZXIsIG1lc3NhZ2VzOiBDaGF0TXNnW10pOiBQcm9taXNlPHN0cmluZz4gewogIGlmIChwLnR5cGUgPT09ICJhbnRocm9waWMiKSB7CiAgICBjb25zdCByID0gYXdhaXQgZmV0Y2goImh0dHBzOi8vYXBpLmFudGhyb3BpYy5jb20vdjEvbWVzc2FnZXMiLCB7CiAgICAgIG1ldGhvZDogIlBPU1QiLAogICAgICBoZWFkZXJzOiB7CiAgICAgICAgImNvbnRlbnQtdHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIiwKICAgICAgICAieC1hcGkta2V5IjogcC5hcGlLZXksCiAgICAgICAgImFudGhyb3BpYy12ZXJzaW9uIjogIjIwMjMtMDYtMDEiLAogICAgICB9LAogICAgICBib2R5OiBKU09OLnN0cmluZ2lmeSh7IG1vZGVsOiBwLm1vZGVsLCBtYXhfdG9rZW5zOiAyMDAwLCBzeXN0ZW06IFNZU1RFTSwKICAgICAgICBtZXNzYWdlczogbWVzc2FnZXMubWFwKChtKSA9PiAoeyByb2xlOiBtLnJvbGUsIGNvbnRlbnQ6IG0uY29udGVudCB9KSkgfSksCiAgICB9KTsKICAgIGlmICghci5vaykgdGhyb3cgbmV3IEVycm9yKGBMTE0g6ZSZ6K+vICR7ci5zdGF0dXN9YCk7CiAgICBjb25zdCBkID0gYXdhaXQgci5qc29uKCkgYXMgeyBjb250ZW50OiB7IHRleHQ6IHN0cmluZyB9W10gfTsKICAgIHJldHVybiBkLmNvbnRlbnRbMF0/LnRleHQgPz8gIiI7CiAgfQogIC8vIG9wZW5haS1jb21wYXRpYmxlCiAgY29uc3QgYmFzZSA9IChwLmJhc2VVcmwgPz8gImh0dHBzOi8vYXBpLm9wZW5haS5jb20vdjEiKS5yZXBsYWNlKC9cLyQvLCAiIik7CiAgY29uc3QgciA9IGF3YWl0IGZldGNoKGAke2Jhc2V9L2NoYXQvY29tcGxldGlvbnNgLCB7CiAgICBtZXRob2Q6ICJQT1NUIiwKICAgIGhlYWRlcnM6IHsgImNvbnRlbnQtdHlwZSI6ICJhcHBsaWNhdGlvbi9qc29uIiwgYXV0aG9yaXphdGlvbjogYEJlYXJlciAke3AuYXBpS2V5fWAgfSwKICAgIGJvZHk6IEpTT04uc3RyaW5naWZ5KHsgbW9kZWw6IHAubW9kZWwsIG1heF90b2tlbnM6IDIwMDAsCiAgICAgIG1lc3NhZ2VzOiBbeyByb2xlOiAic3lzdGVtIiwgY29udGVudDogU1lTVEVNIH0sIC4uLm1lc3NhZ2VzXSB9KSwKICB9KTsKICBpZiAoIXIub2spIHRocm93IG5ldyBFcnJvcihgTExNIOmUmeivryAke3Iuc3RhdHVzfWApOwogIGNvbnN0IGQgPSBhd2FpdCByLmpzb24oKSBhcyB7IGNob2ljZXM6IHsgbWVzc2FnZTogeyBjb250ZW50OiBzdHJpbmcgfSB9W10gfTsKICByZXR1cm4gZC5jaG9pY2VzWzBdPy5tZXNzYWdlLmNvbnRlbnQgPz8gIiI7Cn0KCmV4cG9ydCB0eXBlIFRvb2xFeGVjdXRvciA9ICh0b29sOiBzdHJpbmcsIGFyZ3M6IFJlY29yZDxzdHJpbmcsIHVua25vd24+KSA9PiBQcm9taXNlPHVua25vd24+OwoKY29uc3QgVE9PTF9SRSA9IC9ce1xzKiJ0b29sIlxzKjpccyoiKFteIl0rKSJbXn1dKlx9LzsKCmV4cG9ydCBhc3luYyBmdW5jdGlvbiBhZ2VudENoYXQoCiAgcHJvdmlkZXI6IE1vZGVsUHJvdmlkZXIsCiAgaGlzdG9yeTogQ2hhdE1zZ1tdLAogIHVzZXJNc2c6IHN0cmluZywKICBleGVjOiBUb29sRXhlY3V0b3IsCiAgbWF4U3RlcHMgPSA2LAopOiBQcm9taXNlPHsgcmVwbHk6IHN0cmluZzsgc3RlcHM6IG51bWJlciB9PiB7CiAgY29uc3QgbWVzc2FnZXM6IENoYXRNc2dbXSA9IFsuLi5oaXN0b3J5LnNsaWNlKC0xMCksIHsgcm9sZTogInVzZXIiLCBjb250ZW50OiB1c2VyTXNnIH1dOwogIGxldCBzdGVwcyA9IDA7CiAgZm9yICg7OykgewogICAgY29uc3Qgb3V0ID0gYXdhaXQgY2FsbExMTShwcm92aWRlciwgbWVzc2FnZXMpOwogICAgbWVzc2FnZXMucHVzaCh7IHJvbGU6ICJhc3Npc3RhbnQiLCBjb250ZW50OiBvdXQgfSk7CiAgICBjb25zdCBtID0gb3V0Lm1hdGNoKFRPT0xfUkUpOwogICAgaWYgKCFtIHx8IHN0ZXBzID49IG1heFN0ZXBzKSB7CiAgICAgIC8vIOWOu+aOieaui+eVmeeahCBKU09OIOihjO+8jOWPquS/neeVmeaWh+acrAogICAgICBjb25zdCByZXBseSA9IG91dC5yZXBsYWNlKFRPT0xfUkUsICIiKS50cmltKCkgfHwgb3V0LnRyaW0oKTsKICAgICAgcmV0dXJuIHsgcmVwbHksIHN0ZXBzIH07CiAgICB9CiAgICBzdGVwcysrOwogICAgbGV0IHBhcnNlZDogeyB0b29sOiBzdHJpbmc7IFtrOiBzdHJpbmddOiB1bmtub3duIH07CiAgICB0cnkgeyBwYXJzZWQgPSBKU09OLnBhcnNlKG1bMF0pOyB9IGNhdGNoIHsgYnJlYWs7IH0KICAgIGNvbnN0IHsgdG9vbCwgLi4uYXJncyB9ID0gcGFyc2VkOwogICAgbGV0IHJlc3VsdDogdW5rbm93bjsKICAgIHRyeSB7IHJlc3VsdCA9IGF3YWl0IGV4ZWModG9vbCwgYXJncyk7IH0KICAgIGNhdGNoIChlKSB7IHJlc3VsdCA9IHsgZXJyb3I6IGUgaW5zdGFuY2VvZiBFcnJvciA/IGUubWVzc2FnZSA6IFN0cmluZyhlKSB9OyB9CiAgICBtZXNzYWdlcy5wdXNoKHsgcm9sZTogInVzZXIiLCBjb250ZW50OiBgW+W3peWFtyAke3Rvb2x9IOi/lOWbnl1cbiR7SlNPTi5zdHJpbmdpZnkocmVzdWx0KS5zbGljZSgwLCAzMDAwKX1gIH0pOwogIH0KICBjb25zdCBsYXN0ID0gbWVzc2FnZXNbbWVzc2FnZXMubGVuZ3RoIC0gMV07CiAgcmV0dXJuIHsgcmVwbHk6IGxhc3Q/LmNvbnRlbnQgPz8gIiIsIHN0ZXBzIH07Cn0K
+/**
+ * 内嵌监控 agent：服务端执行 LLM 调用 + 工具循环，API key 不落地浏览器。
+ */
+import type { ModelProvider } from "./providers.js";
+
+export interface ChatMsg { role: "user" | "assistant"; content: string }
+
+const SYSTEM = `你是 MCP-Server 控制中心的内嵌运维助手。你监控本地 MCP 服务器的运行状态，可以查看错误、诊断问题、调整参数。
+
+你可用的工具（用 JSON 调用，一次一个）：
+- {"tool":"health"} 获取综合健康状态（工具数、调用统计、最近错误、桥接状态）
+- {"tool":"tool_stats"} 获取各工具调用/错误明细
+- {"tool":"errors","limit":20} 获取最近错误列表
+- {"tool":"isolate","name":"工具名"} 隔离故障工具（暂停调用）
+- {"tool":"restore","name":"工具名"} 恢复被隔离的工具
+- {"tool":"extensions"} 获取扩展列表及状态
+- {"tool":"ext_toggle","name":"扩展名","enabled":true} 启用/禁用扩展
+- {"tool":"bridge","on":true} 开关 Bridge
+- {"tool":"channels"} 获取信道列表
+- {"tool":"loglevel","level":"debug|info|warn|error"} 调整日志级别
+
+规则：
+1. 需要数据时先调用工具，不要猜测。
+2. 工具返回后，用简洁中文总结给用户，关键数字要准确。
+3. 隔离工具、改配置等危险操作，先说明原因再执行。
+4. 只输出纯文本回复，或单行 JSON 工具调用，不要混在一起。`;
+
+async function callLLM(p: ModelProvider, messages: ChatMsg[]): Promise<string> {
+  if (p.type === "anthropic") {
+    const r = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": p.apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({ model: p.model, max_tokens: 2000, system: SYSTEM,
+        messages: messages.map((m) => ({ role: m.role, content: m.content })) }),
+    });
+    if (!r.ok) throw new Error(`LLM 错误 ${r.status}`);
+    const d = await r.json() as { content: { text: string }[] };
+    return d.content[0]?.text ?? "";
+  }
+  // openai-compatible
+  const base = (p.baseUrl ?? "https://api.openai.com/v1").replace(/\/$/, "");
+  const r = await fetch(`${base}/chat/completions`, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${p.apiKey}` },
+    body: JSON.stringify({ model: p.model, max_tokens: 2000,
+      messages: [{ role: "system", content: SYSTEM }, ...messages] }),
+  });
+  if (!r.ok) throw new Error(`LLM 错误 ${r.status}`);
+  const d = await r.json() as { choices: { message: { content: string } }[] };
+  return d.choices[0]?.message.content ?? "";
+}
+
+export type ToolExecutor = (tool: string, args: Record<string, unknown>) => Promise<unknown>;
+
+const TOOL_RE = /\{\s*"tool"\s*:\s*"([^"]+)"[^}]*\}/;
+
+export async function agentChat(
+  provider: ModelProvider,
+  history: ChatMsg[],
+  userMsg: string,
+  exec: ToolExecutor,
+  maxSteps = 6,
+): Promise<{ reply: string; steps: number }> {
+  const messages: ChatMsg[] = [...history.slice(-10), { role: "user", content: userMsg }];
+  let steps = 0;
+  for (;;) {
+    const out = await callLLM(provider, messages);
+    messages.push({ role: "assistant", content: out });
+    const m = out.match(TOOL_RE);
+    if (!m || steps >= maxSteps) {
+      // 去掉残留的 JSON 行，只保留文本
+      const reply = out.replace(TOOL_RE, "").trim() || out.trim();
+      return { reply, steps };
+    }
+    steps++;
+    let parsed: { tool: string; [k: string]: unknown };
+    try { parsed = JSON.parse(m[0]); } catch { break; }
+    const { tool, ...args } = parsed;
+    let result: unknown;
+    try { result = await exec(tool, args); }
+    catch (e) { result = { error: e instanceof Error ? e.message : String(e) }; }
+    messages.push({ role: "user", content: `[工具 ${tool} 返回]\n${JSON.stringify(result).slice(0, 3000)}` });
+  }
+  const last = messages[messages.length - 1];
+  return { reply: last?.content ?? "", steps };
+}
