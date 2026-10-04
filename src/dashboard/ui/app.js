@@ -389,6 +389,7 @@ function renderCmdk(q) {
   }));
 }
 $("#cmdk-btn").addEventListener("click", openCmdk);
+$("#term-btn")?.addEventListener("click", () => openSshTerminal());
 $("#cmdk-overlay").addEventListener("click", (e) => { if (e.target.id === "cmdk-overlay") closeCmdk(); });
 $("#cmdk-input").addEventListener("input", (e) => renderCmdk(e.target.value));
 document.addEventListener("keydown", (e) => {
