@@ -498,7 +498,10 @@ const Overview = {
           <span class="tp-legend"><i class="lg-dot" style="background:#8b5cf6"></i>请求 <b class="mono" id="ov-req-min">–</b>/min
           <i class="lg-dot" style="background:#34d399"></i>成功 <b class="mono" id="ov-ok-min">–</b>/min</span>
         </div>
-        <canvas class="chart" id="ov-chart"></canvas>
+        <div class="inner-box">
+          <div class="inner-title">吞吐</div>
+          <canvas class="chart" id="ov-chart"></canvas>
+        </div>
         <div class="tp-stats">
           <span>成功率 <b class="mono" id="ov-tp-rate">–</b></span>
           <span>p50 <b class="mono" id="ov-tp-p50">–</b></span>
@@ -508,7 +511,10 @@ const Overview = {
       <div class="card rank-card">
         <div class="ov-eyebrow">TOOL ACTIVITY</div>
         <div class="tp-head"><span class="tp-title">工具调用排行</span><span class="hint mono">LIVE · TOP 8</span></div>
-        <div id="ov-rank"></div>
+        <div class="inner-box">
+          <div class="inner-title">排行</div>
+          <div id="ov-rank"></div>
+        </div>
         <div class="rank-foot"><span class="hint">按最近 60 秒调用次数排序</span><span class="follow"><span class="dot green pulse"></span>更新中</span></div>
       </div>
       <div class="card log-card">
