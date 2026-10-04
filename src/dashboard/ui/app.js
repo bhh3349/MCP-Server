@@ -656,7 +656,8 @@ const Overview = {
     const addMsg = (role, text) => {
       const d = document.createElement("div");
       d.className = `chat-msg ${role}`;
-      d.textContent = text;
+      if (role === "user") d.textContent = text;
+      else d.innerHTML = text;
       chatMsgs.appendChild(d);
       chatMsgs.scrollTop = chatMsgs.scrollHeight;
       return d;
@@ -667,7 +668,7 @@ const Overview = {
       if (!text) return;
       chatInput.value = "";
       addMsg("user", text);
-      chatStatus.textContent = "<span class='lang-zh'>思考中</span><span class='lang-en'>Thinking</span>…";
+      chatStatus.innerHTML = "<span class='lang-zh'>思考中</span><span class='lang-en'>Thinking</span>…";
       const sendBtn = $("#chat-send");
       sendBtn.disabled = true;
       const typing = document.createElement("div");
@@ -685,7 +686,7 @@ const Overview = {
         typing.remove();
         addMsg("sys", `<span class='lang-zh'>出错</span><span class='lang-en'>Error</span>：${e.message}`);
       }
-      chatStatus.textContent = "<span class='lang-zh'>在线</span><span class='lang-en'>Online</span>";
+      chatStatus.innerHTML = "<span class='lang-zh'>在线</span><span class='lang-en'>Online</span>";
       sendBtn.disabled = false;
       chatInput.focus();
     };
@@ -702,13 +703,13 @@ const Overview = {
       // ---- MCP CORE ----
       $("#ov-tools").textContent = ov.tools.count;
       $("#badge-tools").textContent = ov.tools.count || "";
-      $("#ov-mcp-pill").textContent = "<span class='lang-zh'>正常</span><span class='lang-en'>OK</span>";
+      $("#ov-mcp-pill").innerHTML = "<span class='lang-zh'>正常</span><span class='lang-en'>OK</span>";
       $("#ov-mcp-pill").className = "pill green sm";
       const health = ov.toolHealth ?? 1;
       const garc = $("#ov-gauge-arc");
       if (garc) garc.style.strokeDashoffset = String(238.76 * (1 - health));
       $("#ov-health").textContent = `${Math.round(health * 100)}%`;
-      { const _u = $("#uptime"); if (_u) _u.textContent = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`; }
+      { const _u = $("#uptime"); if (_u) _u.innerHTML = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`; }
       // ---- 网关延迟 ----
       const pipes = ov.bridge.pipes;
       const lat = pipes.length && pipes[0].avgLatencyMs != null ? pipes[0].avgLatencyMs
@@ -718,9 +719,9 @@ const Overview = {
       $("#ov-lat").textContent = latVal != null ? latVal : "–";
       $("#ov-lat2").textContent = latVal != null ? `${latVal} ms` : "– ms";
       const gwPill = $("#ov-gw-pill");
-      if (!pipes.length && !chs.length) { gwPill.textContent = "<span class='lang-zh'>未连接</span><span class='lang-en'>Disconnected</span>"; gwPill.className = "pill gray sm"; }
-      else if (ov.bridge.enabled && pipes.some((p) => p.connected)) { gwPill.textContent = "<span class='lang-zh'>已连接</span><span class='lang-en'>Connected</span>"; gwPill.className = "pill green sm"; }
-      else { gwPill.textContent = "<span class='lang-zh'>就绪</span><span class='lang-en'>Ready</span>"; gwPill.className = "pill yellow sm"; }
+      if (!pipes.length && !chs.length) { gwPill.innerHTML = "<span class='lang-zh'>未连接</span><span class='lang-en'>Disconnected</span>"; gwPill.className = "pill gray sm"; }
+      else if (ov.bridge.enabled && pipes.some((p) => p.connected)) { gwPill.innerHTML = "<span class='lang-zh'>已连接</span><span class='lang-en'>Connected</span>"; gwPill.className = "pill green sm"; }
+      else { gwPill.innerHTML = "<span class='lang-zh'>就绪</span><span class='lang-en'>Ready</span>"; gwPill.className = "pill yellow sm"; }
       const sparkEl = $("#ov-spark");
       if (latVal != null) {
         this.latHist.push(latVal); if (this.latHist.length > 30) this.latHist.shift();
@@ -736,11 +737,11 @@ const Overview = {
       // ---- Bridge ----
       const sw = $("#ov-br-switch");
       if (document.activeElement !== sw) sw.checked = ov.bridge.enabled;
-      $("#ov-br-state").textContent = ov.bridge.enabled ? "<span class='lang-zh'>已开启</span><span class='lang-en'>On</span>" : "<span class='lang-zh'>已关闭</span><span class='lang-en'>Off</span>";
+      $("#ov-br-state").innerHTML = ov.bridge.enabled ? "<span class='lang-zh'>已开启</span><span class='lang-en'>On</span>" : "<span class='lang-zh'>已关闭</span><span class='lang-en'>Off</span>";
       const brPill = $("#ov-br-pill");
-      brPill.textContent = ov.bridge.enabled ? "<span class='lang-zh'>在线</span><span class='lang-en'>Online</span>" : "<span class='lang-zh'>离线</span><span class='lang-en'>Offline</span>";
+      brPill.innerHTML = ov.bridge.enabled ? "<span class='lang-zh'>在线</span><span class='lang-en'>Online</span>" : "<span class='lang-zh'>离线</span><span class='lang-en'>Offline</span>";
       brPill.className = `pill ${ov.bridge.enabled ? "green" : "gray"} sm`;
-      $("#ov-pipe-count").textContent = pipes.length ? `${pipes.length} <span class='lang-zh'>条管道</span><span class='lang-en'>pipes</span>` : "<span class='lang-zh'>就绪，未建管道</span><span class='lang-en'>Ready, no pipes</span>";
+      $("#ov-pipe-count").innerHTML = pipes.length ? `${pipes.length} <span class='lang-zh'>条管道</span><span class='lang-en'>pipes</span>` : "<span class='lang-zh'>就绪，未建管道</span><span class='lang-en'>Ready, no pipes</span>";
       $("#ov-pipe-bars").innerHTML = pipes.length
         ? pipes.slice(0, 4).map(() => `<div class="pipe-bar"><div class="pipe-fill" style="width:${60 + Math.random() * 40}%"></div></div>`).join("")
         : "";
@@ -854,7 +855,7 @@ const ChannelsPage = {
 
   async show() {
     const chs = await api("/api/channels").catch(() => []);
-    $("#ch-total").textContent = `<span class='lang-zh'>共</span> ${chs.length} 条`;
+    $("#ch-total").innerHTML = `<span class='lang-zh'>共</span> ${chs.length} 条`;
     $("#ch-tbody").innerHTML = chs.map((c) => `
       <tr><td><span class="dot ${dotFor(c)}"></span></td>
         <td><b>${esc(c.name)}</b><div class="hint mono" style="font-size:10.5px">${esc(c.bindingId)}</div></td>
@@ -915,7 +916,7 @@ const ChannelsPage = {
     $("#m-ok").addEventListener("click", async () => {
       const name = $("#nc-name").value.trim() || "channel";
       const kind = kindSel.value;
-      const btn = $("#m-ok"); btn.disabled = true; btn.textContent = "<span class='lang-zh'>建立中</span><span class='lang-en'>Creating</span>…";
+      const btn = $("#m-ok"); btn.disabled = true; btn.innerHTML = "<span class='lang-zh'>建立中</span><span class='lang-en'>Creating</span>…";
       try {
         let r;
         if (kind === "local") {
@@ -940,7 +941,7 @@ const ChannelsPage = {
         toast("<span class='lang-zh'>信道建立成功</span><span class='lang-en'>Channel Created</span>"); this.show();
       } catch (e) {
         $("#nc-result").innerHTML = `<div class="result-box err" style="margin-top:14px">${esc(e.message)}</div>`;
-      } finally { btn.disabled = false; btn.textContent = "<span class='lang-zh'>建立</span><span class='lang-en'>Create</span>"; }
+      } finally { btn.disabled = false; btn.innerHTML = "<span class='lang-zh'>建立</span><span class='lang-en'>Create</span>"; }
     });
   },
 };
@@ -1116,7 +1117,7 @@ const ToolsPage = {
     if (!ov) return;
     this.tools = ov.tools.list; this.stats = st?.tools || []; this.disabled = new Set(st?.disabled || []);
     $("#badge-tools").textContent = this.tools.length || "";
-    $("#tool-total").textContent = `<span class='lang-zh'>共</span> ${this.tools.length} <span class='lang-zh'>个</span>`;
+    $("#tool-total").innerHTML = `<span class='lang-zh'>共</span> ${this.tools.length} <span class='lang-zh'>个</span>`;
     this.render($("#tool-q").value);
   },
   render(q = "") {
@@ -1165,11 +1166,11 @@ const ToolsPage = {
       let args;
       try { args = JSON.parse($("#pg-args").value || "{}"); }
       catch { $("#pg-result").innerHTML = `<div class="result-box err"><span class='lang-zh'>参数</span><span class='lang-en'>Params</span>不是合法 JSON</div>`; return; }
-      const btn = $("#m-run"); btn.disabled = true; btn.textContent = "<span class='lang-zh'>执行中</span><span class='lang-en'>Running</span>…";
+      const btn = $("#m-run"); btn.disabled = true; btn.innerHTML = "<span class='lang-zh'>执行中</span><span class='lang-en'>Running</span>…";
       try {
         const r = await api("/api/tools/call", { method: "POST", body: { name: t.name, args } });
         if (r.approvalRequired) {
-          btn.disabled = false; btn.textContent = "<span class='lang-zh'>执行</span><span class='lang-en'>Run</span>";
+          btn.disabled = false; btn.innerHTML = "<span class='lang-zh'>执行</span><span class='lang-en'>Run</span>";
           showApprovalModal(r.approvalId, t.name, args, (res) => {
             $("#pg-result").innerHTML = res.error
               ? `<div class="result-box err">${esc(res.error)}</div>`
@@ -1180,7 +1181,7 @@ const ToolsPage = {
         $("#pg-result").innerHTML = `<div class="result-box ok">${esc(JSON.stringify(r.result, null, 2))}\n\n// ${r.ms}ms</div>`;
       } catch (e) {
         $("#pg-result").innerHTML = `<div class="result-box err">${esc(e.message)}</div>`;
-      } finally { btn.disabled = false; btn.textContent = "<span class='lang-zh'>执行</span><span class='lang-en'>Run</span>"; }
+      } finally { btn.disabled = false; btn.innerHTML = "<span class='lang-zh'>执行</span><span class='lang-en'>Run</span>"; }
     });
   },
 };
@@ -1199,13 +1200,13 @@ function showApprovalModal(approvalId, toolName, args, onDone, onCancel) {
     onCancel?.();
   });
   $("#ap-approve").addEventListener("click", async () => {
-    const b = $("#ap-approve"); b.disabled = true; b.textContent = "<span class='lang-zh'>执行中</span><span class='lang-en'>Running</span>…";
+    const b = $("#ap-approve"); b.disabled = true; b.innerHTML = "<span class='lang-zh'>执行中</span><span class='lang-en'>Running</span>…";
     try {
       const r = await api(`/api/approvals/${approvalId}/approve`, { method: "POST" });
       closeModal();
       toast("<span class='lang-zh'>已批准并执行</span><span class='lang-en'>Approved & Executed</span>");
       onDone?.(r);
-    } catch (e) { toast(e.message, false); b.disabled = false; b.textContent = "<span class='lang-zh'>批准执行</span><span class='lang-en'>Approve & Execute</span>"; }
+    } catch (e) { toast(e.message, false); b.disabled = false; b.innerHTML = "<span class='lang-zh'>批准执行</span><span class='lang-en'>Approve & Execute</span>"; }
   });
 }
 
@@ -1226,7 +1227,7 @@ const LogsPage = {
     $("#log-level").addEventListener("change", () => { this.since = 0; $("#log-view").innerHTML = ""; this.poll(); });
     $("#log-pause").addEventListener("click", (e) => {
       this.paused = !this.paused;
-      e.target.textContent = this.paused ? "<span class='lang-zh'>继续</span><span class='lang-en'>Continue</span>" : "<span class='lang-zh'>暂停</span><span class='lang-en'>Pause</span>";
+      e.target.innerHTML = this.paused ? "<span class='lang-zh'>继续</span><span class='lang-en'>Continue</span>" : "<span class='lang-zh'>暂停</span><span class='lang-en'>Pause</span>";
     });
     $("#log-clear").addEventListener("click", () => { $("#log-view").innerHTML = ""; });
   },
@@ -1478,7 +1479,7 @@ const SettingsModal = {
         this.renderModelBox();
         toast(`<span class="lang-zh">获取到</span><span class="lang-en">Got</span> ${r.models.length} <span class="lang-zh">个模型</span><span class="lang-en">models</span>`);
       } catch (e) { toast(e.message, false); }
-      finally { btn.disabled = false; btn.textContent = "<span class='lang-zh'>获取可用模型</span><span class='lang-en'>Fetch Models</span>"; }
+      finally { btn.disabled = false; btn.innerHTML = "<span class='lang-zh'>获取可用模型</span><span class='lang-en'>Fetch Models</span>"; }
     });
     $("#pf-add-model").addEventListener("click", () => {
       const m = prompt("<span class='lang-zh'>输入模型</span><span class='lang-en'>Enter model</span> ID：");
@@ -1559,7 +1560,7 @@ const SettingsModal = {
     $("#app-version").textContent = `v${ov?.version || "0.1.0"}`;
     $$("#perm-seg button").forEach((x) => x.classList.toggle("active", x.dataset.v === (m?.mode || "approval")));
     const pend = apList.filter((a) => a.status === "pending");
-    $("#perm-summary").textContent = pend.length ? `${pend.length} <span class='lang-zh'>个待审批</span><span class='lang-en'>pending</span>` : "<span class='lang-zh'>暂无待审批</span><span class='lang-en'>No pending</span>";
+    $("#perm-summary").innerHTML = pend.length ? `${pend.length} <span class='lang-zh'>个待审批</span><span class='lang-en'>pending</span>` : "<span class='lang-zh'>暂无待审批</span><span class='lang-en'>No pending</span>";
     const pl = $("#perm-list");
     pl.classList.toggle("hidden", !pend.length);
     pl.innerHTML = pend.map((a) => `
@@ -1582,8 +1583,8 @@ const SettingsModal = {
     this.editing = p?.id || null;
     this.fetchedModels = p?.model ? [p.model] : [];
     this.selModel = p?.model || null;
-    $("#pf-title").textContent = p ? "<span class='lang-zh'>编辑模型提供商</span><span class='lang-en'>Edit Provider</span>" : "<span class='lang-zh'>添加模型提供商</span><span class='lang-en'>Add Provider</span>";
-    $("#pf-save").textContent = p ? "<span class='lang-zh'>保存</span><span class='lang-en'>Save</span>" : "<span class='lang-zh'>创建提供商</span><span class='lang-en'>Create Provider</span>";
+    $("#pf-title").innerHTML = p ? "<span class='lang-zh'>编辑模型提供商</span><span class='lang-en'>Edit Provider</span>" : "<span class='lang-zh'>添加模型提供商</span><span class='lang-en'>Add Provider</span>";
+    $("#pf-save").innerHTML = p ? "<span class='lang-zh'>保存</span><span class='lang-en'>Save</span>" : "<span class='lang-zh'>创建提供商</span><span class='lang-en'>Create Provider</span>";
     $("#pf-name").value = p?.name || "";
     $("#cs-pftype")._setVal(p?.type || "openai");
     $("#pf-base").value = p?.baseUrl || "";
@@ -1634,7 +1635,7 @@ const SettingsModal = {
   async refreshGateway() {
     const b = await api("/api/bridge").catch(() => ({ enabled: false, pipes: [] }));
     $("#gw-br-switch").checked = b.enabled;
-    $("#gw-br-state").textContent = b.enabled ? "<span class='lang-zh'>开启</span><span class='lang-en'>On</span>" : "<span class='lang-zh'>关闭</span><span class='lang-en'>Close</span>";
+    $("#gw-br-state").innerHTML = b.enabled ? "<span class='lang-zh'>开启</span><span class='lang-en'>On</span>" : "<span class='lang-zh'>关闭</span><span class='lang-en'>Close</span>";
     $("#gw-pipes").innerHTML = b.pipes.length ? b.pipes.map((p) => `
       <div class="ch-row" style="height:44px"><span class="dot ${p.connected ? "green pulse" : "red"}"></span>
         <div><div class="mono" style="font-size:12px">${esc(p.gatewayUrl)}</div>
@@ -1665,7 +1666,7 @@ const PAGES = {
   } catch { /* 浏览器环境，忽略 */ }
   try {
     const ov = await api("/api/overview");
-    { const _u = $("#uptime"); if (_u) _u.textContent = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`; }
+    { const _u = $("#uptime"); if (_u) _u.innerHTML = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`; }
     buildCmdkIndex();
   } catch (e) {
     toast("<span class='lang-zh'>连接 dashboard 后端失败</span><span class='lang-en'>Backend connect failed</span>", false);
@@ -1673,7 +1674,7 @@ const PAGES = {
   setInterval(async () => {
     try {
       const ov = await api("/api/overview");
-      { const _u = $("#uptime"); if (_u) _u.textContent = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`; }
+      { const _u = $("#uptime"); if (_u) _u.innerHTML = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`; }
     } catch { /* ignore */ }
   }, 10000);
   navTo("overview");
