@@ -513,7 +513,10 @@ canvas.chart { width: 100%; display: block; }
 .tool-card .t-name { font-family: var(--font-m); font-size: 12.5px; font-weight: 700; color: #c4b5fd; margin-bottom: 4px; }
 .tool-card .t-desc { font-size: 11.5px; color: var(--text2); line-height: 1.5; margin-bottom: 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tool-meta { display: flex; align-items: center; justify-content: space-between; }
+.tool-meta .switch { margin-left: auto; }
 .tool-calls { font-family: var(--font-m); font-size: 10.5px; color: var(--text3); }
+.tool-card.disabled { opacity: .55; }
+.tool-card.disabled .t-name { color: var(--text3); }
 
 /* ---------- 弹窗 ---------- */
 #modal-overlay, #cmdk-overlay {
