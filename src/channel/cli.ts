@@ -14,6 +14,9 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { Bridge } from "../bridge/pipe.js";
 import { ChannelManager } from "./manager.js";
 import { buildServer } from "../server.js";
+import { ToolStats } from "../dashboard/stats.js";
+import { logStore } from "../dashboard/logger.js";
+import { startDashboard } from "../dashboard/api.js";
 
 const CONFIG_PATH = join(homedir(), ".mcp-server", "gateways.json");
 
@@ -90,10 +93,19 @@ async function main() {
   upsertGateway(gatewayUrl, token);
 
   // ---- 建 ChannelManager（Bridge 在 establish 时自动打开） ----
+  // dashboard 与信道内嵌 server 共享同一份工具调用统计
+  const stats = new ToolStats();
+  logStore.install();
   const mgr = new ChannelManager(
     new Bridge({ gatewayUrl: "", autoReconnect: false }),
-    async () => (await buildServer({ withChannels: false })).server,
+    async () => (await buildServer({ stats, withChannels: false })).server,
   );
+
+  if (process.argv.includes("--dashboard")) {
+    const { extensions } = await buildServer({ stats });
+    const { url } = await startDashboard({ manager: mgr, stats, extensions });
+    console.log(`  控制中心: ${url}`);
+  }
 
   console.log("  正在连接网关…");
   // 先建一条测试信道验证连通性？不，直接进菜单，create 时会连

@@ -25,6 +25,7 @@ import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import { z } from "zod";
 import { buildServer } from "../server.js";
+import type { ExtensionRegistry } from "../extensions/registry.js";
 import { ChannelManager } from "../channel/manager.js";
 import { Bridge } from "../bridge/pipe.js";
 import { VERSION } from "../version.js";
@@ -117,21 +118,22 @@ export interface DashboardOptions {
   /** 绑定地址，默认 127.0.0.1（只本机）。DASHBOARD_HOST 可覆盖。 */
   host?: string;
   extensionsDir?: string;
+  /**
+   * 集成模式：注入主进程的真实实例，dashboard 与 MCP 服务共享同一份状态。
+   * 不传则 dashboard 自建实例（独立 `npm run dashboard` 模式，UI 开发用）。
+   */
+  manager?: ChannelManager;
+  stats?: ToolStats;
+  extensions?: ExtensionRegistry;
 }
 
 export async function startDashboard(opts: DashboardOptions = {}): Promise<{ port: number; url: string }> {
   const startedAt = Date.now();
-  const stats = new ToolStats();
+  const stats = opts.stats ?? new ToolStats();
   logStore.install();
 
-  const { extensions } = await buildServer({
-    ...(opts.extensionsDir ? { extensionsDir: opts.extensionsDir } : {}),
-    stats,
-  });
-
-  // dashboard 自己的 ChannelManager（与 MCP 工具用的不是同一个进程级实例，
-  // 但 dashboard 模式下 MCP 工具不对外服务，以这里为准）
-  const mgr = new ChannelManager(
+  // 集成模式用主进程的 manager/extensions；独立模式自建（影子实例）
+  const mgr: ChannelManager = opts.manager ?? new ChannelManager(
     new Bridge({ gatewayUrl: "", autoReconnect: false }),
     () => buildServer({
       ...(opts.extensionsDir ? { extensionsDir: opts.extensionsDir } : {}),
@@ -139,6 +141,10 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
       withChannels: false,
     }).then((r) => r.server),
   );
+  const extensions: ExtensionRegistry = opts.extensions ?? (await buildServer({
+    ...(opts.extensionsDir ? { extensionsDir: opts.extensionsDir } : {}),
+    stats,
+  })).extensions;
 
   const ui = uiDir();
 
