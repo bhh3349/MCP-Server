@@ -401,14 +401,18 @@ function drawThroughput(cv, req, ok) {
   const padL = 30, padB = 18, padT = 8, cw = w - padL - 8, ch = h - padT - padB;
   const max = Math.max(10, ...req, ...ok);
   const n = req.length, bw = Math.max(2, (cw / n) * 0.45);
-  // 网格 + Y 轴
-  ctx.font = "9px JetBrains Mono, monospace"; ctx.fillStyle = "rgba(255,255,255,.28)";
-  ctx.strokeStyle = "rgba(255,255,255,.05)"; ctx.lineWidth = 1;
+  // 网格 + Y 轴刻度
+  ctx.font = "9px JetBrains Mono, monospace"; ctx.fillStyle = "rgba(255,255,255,.35)";
+  ctx.strokeStyle = "rgba(255,255,255,.07)"; ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const y = padT + (ch / 4) * i, v = Math.round(max * (1 - i / 4));
     ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - 8, y); ctx.stroke();
     ctx.fillText(String(v), 4, y + 3);
   }
+  // 坐标轴
+  ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + ch); ctx.stroke(); // Y 轴
+  ctx.beginPath(); ctx.moveTo(padL, padT + ch); ctx.lineTo(w - 8, padT + ch); ctx.stroke(); // X 轴
   const X = (i) => padL + (i / (n - 1)) * cw;
   const Y = (v) => padT + ch - (v / max) * ch;
   // 柱状（请求）
@@ -432,7 +436,7 @@ function drawThroughput(cv, req, ok) {
   line(req, "#8b5cf6", true);
   line(ok, "#34d399", false);
   // X 轴时间
-  ctx.fillStyle = "rgba(255,255,255,.28)";
+  ctx.fillStyle = "rgba(255,255,255,.35)";
   ["-60s", "-40s", "-20s", "NOW"].forEach((t, i) => {
     ctx.fillText(t, padL + (cw / 3) * i - 8, h - 5);
   });
