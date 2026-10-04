@@ -268,6 +268,14 @@ function openModal(html) {
 }
 function closeModal() { $("#modal-overlay").classList.add("hidden"); $("#modal-box").classList.remove("set-wide"); }
 $("#modal-overlay").addEventListener("click", (e) => { if (e.target.id === "modal-overlay") closeModal(); });
+/** 确认弹窗 */
+function openConfirm(title, desc, onOk) {
+  openModal(`<div class="modal-title">${title}</div>
+    <div class="hint" style="margin-bottom:16px">${desc}</div>
+    <div class="modal-actions"><button class="btn ghost" id="m-cancel">取消</button><button class="btn danger" id="m-ok">确定</button></div>`);
+  $("#m-cancel").addEventListener("click", closeModal);
+  $("#m-ok").addEventListener("click", async () => { closeModal(); await onOk(); });
+}
 
 function fmtUptime(sec) {
   const d = Math.floor(sec / 86400), h = Math.floor(sec % 86400 / 3600), m = Math.floor(sec % 3600 / 60);
@@ -936,7 +944,7 @@ function pluginCard(e) {
       <div class="tool-tags">${e.toolNames.map((t) => `<span class="tag mono">${esc(t)}</span>`).join("") || '<span class="hint">无</span>'}</div>
     </div>
     <div class="ext-foot" style="margin-top:10px">
-      <span></span>
+      <button class="btn sm ghost danger" data-uninstall="${esc(e.name)}">卸载</button>
       ${e.enabled ? `<label class="switch" title="禁用"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint">重启恢复</span>`}
     </div>
   </div>`;
@@ -956,7 +964,10 @@ function skillCard(e) {
     </div>` : ""}
     <div class="ext-foot" style="margin-top:10px">
       <span class="hint">AI 会话中按需调用</span>
-      ${e.enabled ? `<label class="switch" title="禁用"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint">重启恢复</span>`}
+      <span style="display:flex;gap:8px;align-items:center">
+        <button class="btn sm ghost danger" data-uninstall="${esc(e.name)}">卸载</button>
+        ${e.enabled ? `<label class="switch" title="禁用"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint">重启恢复</span>`}
+      </span>
     </div>
   </div>`;
 }
@@ -973,7 +984,10 @@ function connectorCard(e) {
     <div class="ext-desc">${esc(e.description || "暂无描述")}</div>
     ${e.toolNames?.length ? `<div class="ext-tools" style="margin-top:8px">${e.toolNames.map(esc).join(" · ")}</div>` : ""}
     <div class="ext-foot" style="margin-top:10px">
-      ${e.name === "github" ? `<button class="btn sm ghost" data-cfg="${esc(e.name)}">配置 Token</button>` : `<span></span>`}
+      <span style="display:flex;gap:8px">
+        ${e.name === "github" ? `<button class="btn sm ghost" data-cfg="${esc(e.name)}">配置 Token</button>` : ``}
+        <button class="btn sm ghost danger" data-uninstall="${esc(e.name)}">卸载</button>
+      </span>
       ${e.enabled ? `<label class="switch" title="禁用"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint">重启恢复</span>`}
     </div>
   </div>`;
@@ -998,6 +1012,13 @@ function makeExtPage(kind, title, pageId, badgeId, cardFn) {
         else sw.checked = true;
       }));
       $$(`#${pageId}-wrap [data-cfg]`).forEach((b) => b.addEventListener("click", () => openExtConfig(b.dataset.cfg)));
+      $$(`#${pageId}-wrap [data-uninstall]`).forEach((b) => b.addEventListener("click", async () => {
+        const name = b.dataset.uninstall;
+        openConfirm(`确定卸载 ${esc(name)}？`, `扩展文件将被删除，重启后生效`, async () => {
+          const r = await api(`/api/extensions/${encodeURIComponent(name)}`, { method: "DELETE" }).catch((e) => toast(e.message, false));
+          if (r?.ok) { toast(`已卸载 ${name}`); this.show(); }
+        });
+      }));
     },
   };
 }
@@ -1077,7 +1098,7 @@ const ToolsPage = {
   async show() {
     const [ov, st] = await Promise.all([api("/api/overview"), api("/api/stats/tools")]).catch(() => []);
     if (!ov) return;
-    this.tools = ov.tools.list; this.stats = st?.tools || [];
+    this.tools = ov.tools.list; this.stats = st?.tools || []; this.disabled = new Set(st?.disabled || []);
     $("#badge-tools").textContent = this.tools.length || "";
     $("#tool-total").textContent = `共 ${this.tools.length} 个`;
     this.render($("#tool-q").value);
@@ -1089,14 +1110,26 @@ const ToolsPage = {
       (t.description || "").toLowerCase().includes(q.toLowerCase()));
     $("#tool-grid").innerHTML = list.map((t) => {
       const s = smap.get(t.name);
-      return `<div class="card tool-card" data-name="${esc(t.name)}">
-        <div class="t-name">${esc(t.name)}</div>
+      const dis = this.disabled.has(t.name);
+      return `<div class="card tool-card${dis ? " disabled" : ""}" data-name="${esc(t.name)}">
+        <div class="t-name">${esc(t.name)}${dis ? ' <span class="pill gray sm">已禁用</span>' : ""}</div>
         <div class="t-desc">${esc(t.description || "")}</div>
         <div class="tool-meta"><span class="pill ${this.danger(t.name) ? "red" : "gray"}">${this.danger(t.name) ? "危险" : "安全"}</span>
-        <span class="tool-calls">${s ? `${s.calls} 次调用` : "未调用"}</span></div></div>`;
+        <span class="tool-calls">${s ? `${s.calls} 次调用` : "未调用"}</span>
+        <label class="switch sm" title="${dis ? "启用" : "禁用"}" data-stop><input type="checkbox"${dis ? "" : " checked"} data-tool-toggle="${esc(t.name)}"><span class="track"></span></label></div></div>`;
     }).join("");
     $$("#tool-grid .tool-card").forEach((c) =>
-      c.addEventListener("click", () => this.openPlayground(this.tools.find((t) => t.name === c.dataset.name))));
+      c.addEventListener("click", (e) => {
+        if (e.target.closest("[data-stop]")) return;
+        this.openPlayground(this.tools.find((t) => t.name === c.dataset.name));
+      }));
+    $$("#tool-grid [data-tool-toggle]").forEach((sw) => sw.addEventListener("change", async () => {
+      const name = sw.dataset.toolToggle;
+      const action = sw.checked ? "enable" : "disable";
+      const r = await api(`/api/agent/tools/${encodeURIComponent(name)}/${action}`, { method: "POST" }).catch((e) => toast(e.message, false));
+      if (r?.ok) { toast(`工具 ${name} 已${action === "disable" ? "禁用" : "启用"}`); this.show(); }
+      else sw.checked = !sw.checked;
+    }));
   },
   danger(name) {
     return /^(write_file|delete_file|move_file|exec|mouse_|key_|hotkey)/.test(name);
