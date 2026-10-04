@@ -29,6 +29,11 @@ function applyLang() {
     if (!el.dataset.titleZh) el.dataset.titleZh = el.getAttribute("title") || "";
     el.setAttribute("title", l === "en" ? (el.dataset.titleEn || "") : (el.dataset.titleZh || ""));
   });
+  // Swap select options with data-opt-en
+  document.querySelectorAll("option[data-opt-en]").forEach((el) => {
+    if (!el.dataset.optZh) el.dataset.optZh = el.textContent || "";
+    el.textContent = l === "en" ? (el.dataset.optEn || "") : (el.dataset.optZh || "");
+  });
   // Update document title
   document.title = l === "en" ? "MCP-Server Console" : "MCP-Server 控制中心";
   return l;
@@ -1218,7 +1223,7 @@ const LogsPage = {
   html() {
     return `<div class="sec-head"><div class="sec-title"><span class="lang-zh">日志</span><span class="lang-en">Logs</span></div>
       <div class="log-toolbar">
-        <select id="log-level"><option value=""><span class='lang-zh'>全部级别</span><span class='lang-en'>All</span></option><option value="info">INFO</option><option value="warn">WARN</option><option value="error">ERROR</option><option value="debug">DEBUG</option></select>
+        <select id="log-level"><option value="" data-opt-en="All">全部级别</option><option value="info">INFO</option><option value="warn">WARN</option><option value="error">ERROR</option><option value="debug">DEBUG</option></select>
         <button class="btn sm ghost" id="log-pause"><span class="lang-zh">暂停</span><span class="lang-en">Pause</span></button>
         <button class="btn sm ghost" id="log-clear"><span class="lang-zh">清空</span><span class="lang-en">Clear</span></button>
       </div></div>
@@ -1253,8 +1258,8 @@ const ErrorsPage = {
   html() {
     return `<div class="sec-head"><div class="sec-title"><span class="lang-zh">错误收集</span><span class="lang-en">Errors</span></div>
       <div class="log-toolbar">
-        <select id="err-src"><option value=""><span class='lang-zh'>全部来源</span><span class='lang-en'>All</span></option><option value="tool:"><span class='lang-zh'>工具</span><span class='lang-en'>Tools</span></option><option value="gateway"><span class='lang-zh'>网关</span><span class='lang-en'>Gateway</span></option><option value="channel:"><span class='lang-zh'>信道</span><span class='lang-en'>Channels</span></option><option value="dashboard"><span class='lang-zh'>面板</span><span class='lang-en'>Panel</span></option></select>
-        <select id="err-acked"><option value=""><span class='lang-zh'>全部状态</span><span class='lang-en'>All</span></option><option value="false"><span class='lang-zh'>未处理</span><span class='lang-en'>Pending</span></option><option value="true"><span class='lang-zh'>已处理</span><span class='lang-en'>Done</span></option></select>
+        <select id="err-src"><option value="" data-opt-en="All">全部来源</option><option value="tool:" data-opt-en="Tools">工具</option><option value="gateway" data-opt-en="Gateway">网关</option><option value="channel:" data-opt-en="Channels">信道</option><option value="dashboard" data-opt-en="Panel">面板</option></select>
+        <select id="err-acked"><option value="" data-opt-en="All">全部状态</option><option value="false" data-opt-en="Pending">未处理</option><option value="true" data-opt-en="Done">已处理</option></select>
       </div></div>
     <div class="err-stats" id="err-stats"></div>
     <div class="card"><div id="err-list"></div></div>`;
