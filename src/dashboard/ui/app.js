@@ -396,7 +396,9 @@ function drawDonut(rate) {
 /* MCP CORE 紫色仪表盘 */
 /* 吞吐：柱状 + 双线 + 坐标轴（图一还原） */
 function drawThroughput(cv, req, ok) {
-  const H = 150, { ctx, w, h } = setupCanvas(cv, H);
+  const box = cv.closest(".inner-box");
+  const H = box ? Math.max(120, box.clientHeight - 40) : 150;
+  const { ctx, w, h } = setupCanvas(cv, H);
   ctx.clearRect(0, 0, w, h);
   const padL = 30, padB = 18, padT = 8, cw = w - padL - 8, ch = h - padT - padB;
   const max = Math.max(10, ...req, ...ok);
