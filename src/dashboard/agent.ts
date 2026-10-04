@@ -61,7 +61,7 @@ export type ToolExecutor = (tool: string, args: Record<string, unknown>) => Prom
 const TOOL_RE = /\{\s*"tool"\s*:\s*"([^"]+)"[^}]*\}/;
 // LongCat 等模型的原生工具调用格式：<longcat_tool_call>tool</longcat_tool_call>
 // 或带参数 <longcat_tool_call>tool\n{"arg":"v"}</longcat_tool_call>
-const LONGCAT_RE = /<longcat_tool_call>\s*([a-z_]+)\s*(?:\n([\s\S]*?))?<\/longcat_tool_call>/;
+const LONGCAT_RE = /<longcat_tool_call>\s*([a-z_]+)\s*(?:\n([\s\S]*?))?<\/longcat_\w+>/;
 
 /** 从模型输出里提取工具调用，支持 JSON 和 LongCat 两种格式 */
 function parseToolCall(out: string): { tool: string; args: Record<string, unknown>; strip: RegExp } | null {
