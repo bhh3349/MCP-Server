@@ -387,8 +387,12 @@ input, select, textarea { font-family: inherit; }
 #ov-chart { flex: 1; min-height: 0; }
 
 /* 日志卡（瘦） */
-.log-stream.slim { flex: 1; overflow: hidden; min-height: 0; min-width: 0; font-size: 10.5px; }
-.log-stream.slim .log-line { gap: 8px; }
+.log-stream.slim { flex: 1; overflow: hidden; min-height: 0; min-width: 0; font-size: 10.5px; scroll-behavior: smooth; }
+.log-stream.slim .log-line {
+  gap: 6px; margin-bottom: 4px; padding: 4px 8px;
+  border: 1px solid var(--border); border-radius: 7px; background: rgba(255,255,255,.02);
+}
+.log-stream.slim .log-lv { width: 36px; }
 .log-stream.slim .log-src { display: none; }
 .log-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.05); }
 .follow { font-size: 10.5px; color: var(--text2); display: flex; align-items: center; gap: 6px; }

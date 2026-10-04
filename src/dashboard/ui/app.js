@@ -729,7 +729,7 @@ const Overview = {
         ).join("");
         const el = $("#ov-logs");
         while (el.children.length > 30) el.firstChild.remove();
-        el.scrollTop = el.scrollHeight;
+        el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
       }
     } catch (e) { /* 静默，下一轮重试 */ }
   },
