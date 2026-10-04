@@ -1434,7 +1434,7 @@ const SettingsModal = {
             <div class="field"><label><span class="lang-zh">服务器</span><span class="lang-en">Server</span> IP</label><input id="gw-ip" class="mono" spellcheck="false" placeholder="23.251.34.248"></div>
             <div class="field"><label>SSH <span class="lang-zh">端口</span><span class="lang-en">Port</span></label><input id="gw-sshport" class="mono" inputmode="numeric" placeholder="22"></div>
             <div class="field"><label><span class="lang-zh">用户名</span><span class="lang-en">User</span></label><input id="gw-user" class="mono" spellcheck="false" placeholder="root"></div>
-            <div class="field"><label><span class="lang-zh">密码</span><span class="lang-en">Password</span></label><input id="gw-pass" type="password" placeholder="只用于本次连接，不保存" data-ph-en="This connection only"</div>
+            <div class="field"><label><span class="lang-zh">密码</span><span class="lang-en">Password</span></label><input id="gw-pass" type="password" placeholder="只用于本次连接，不保存" data-ph-en="This connection only"></div>
           </div>
           <details class="gw-adv"><summary><span class="lang-zh">自定义部署命令</span><span class="lang-en">Custom Command</span>（<span class="lang-zh">选填，会覆盖上面的字段</span><span class="lang-en">Optional, overrides above</span>）</summary>
             <div class="field" style="margin-top:8px"><textarea id="gw-custom-cmd" rows="2" class="mono" spellcheck="false" placeholder="空着用系统内置命令" data-ph-en="Empty = built-in"></textarea></div>
