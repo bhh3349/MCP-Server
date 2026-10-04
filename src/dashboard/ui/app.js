@@ -322,6 +322,7 @@ function navTo(page) {
   $("#crumb-page").innerHTML = PAGE_TITLES[page];
   if (!pageInited[page]) { pageInited[page] = true; PAGES[page].init?.(); }
   PAGES[page].show?.();
+  applyLang(); // 新页面渲染后应用语言（placeholder 等）
   stopLive();
   LogsPage.stop(); ErrorsPage.stop();
   if (page === "overview") startLive();
