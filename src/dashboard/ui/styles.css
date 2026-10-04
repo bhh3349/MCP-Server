@@ -315,9 +315,13 @@ input, select, textarea { font-family: inherit; }
 .ov-top .card:not(.mcpcore) .gw-foot { margin-top: 4px; }
 .ov-top .card:not(.mcpcore) .stat-sub { margin-top: 4px; }
 .ov-top .card.mcpcore { overflow: hidden; }
-.ov-mid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 12px; flex-shrink: 0; height: 288px; }
-.ov-bot { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 12px; flex: 1; min-height: 0; }
-.ov-bot > :first-child { grid-column: 1 / 3; }
+.ov-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 1.1fr);
+  grid-template-rows: 288px minmax(0, 1fr);
+  gap: 12px; flex: 1; min-height: 0;
+}
+.ov-main .chat-card { grid-column: 3; grid-row: 1 / 3; }
 .chat-placeholder { border: 1px dashed rgba(255,255,255,.08); border-radius: var(--radius); min-height: 0; }
 .chat-card { min-height: 0; padding: 12px 14px; display: flex; flex-direction: column; height: 100%; }
 .chat-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-shrink: 0; }

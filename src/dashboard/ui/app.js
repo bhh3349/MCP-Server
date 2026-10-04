@@ -491,7 +491,7 @@ const Overview = {
         <div class="ch-list" id="ov-ch-list"><div class="ch-empty">暂无信道</div></div>
       </div>
     </div>
-    <div class="ov-mid">
+    <div class="ov-main">
       <div class="card tp-card">
         <div class="ov-eyebrow">DATA THROUGHPUT STREAM</div>
         <div class="tp-head"><span class="tp-title">调用吞吐</span>
@@ -517,14 +517,6 @@ const Overview = {
         </div>
         <div class="rank-foot"><span class="hint">按最近 60 秒调用次数排序</span><span class="follow"><span class="dot green pulse"></span>更新中</span></div>
       </div>
-      <div class="card log-card">
-        <div class="ov-eyebrow">LIVE EVENT STREAM <span class="live-mini"><span class="dot green pulse"></span>LIVE</span></div>
-        <div class="tp-title">实时日志流</div>
-        <div class="log-stream slim" id="ov-logs"></div>
-        <div class="log-foot"><span class="hint">自动滚动</span><span class="follow"><span class="dot green"></span>跟随中</span></div>
-      </div>
-    </div>
-    <div class="ov-bot">
       <div class="card chat-card">
         <div class="chat-head">
           <div class="chat-avatar">🤖</div>
@@ -543,6 +535,12 @@ const Overview = {
           <input id="chat-input" placeholder="问问 MCP 状态…" maxlength="500">
           <button class="chat-send" id="chat-send">↑</button>
         </div>
+      </div>
+      <div class="card log-card">
+        <div class="ov-eyebrow">LIVE EVENT STREAM <span class="live-mini"><span class="dot green pulse"></span>LIVE</span></div>
+        <div class="tp-title">实时日志流</div>
+        <div class="log-stream slim" id="ov-logs"></div>
+        <div class="log-foot"><span class="hint">自动滚动</span><span class="follow"><span class="dot green"></span>跟随中</span></div>
       </div>
       <div class="card rel-card">
         <div class="ov-eyebrow">RELIABILITY</div>
