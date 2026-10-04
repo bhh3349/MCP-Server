@@ -1097,7 +1097,7 @@ const SettingsModal = {
         <div class="modal-title" style="margin-bottom:12px">设置</div>
         <button class="set-tab" data-tab="general"><span>⚙</span>通用设置</button>
         <button class="set-tab" data-tab="model"><span>◫</span>模型</button>
-        <button class="set-tab" data-tab="gateway"><span>⌁</span>网关</button>
+        <button class="set-tab" data-tab="gateway"><span>⇄</span>网关</button>
       </div>
       <div class="set-main">
         <div class="set-pane" id="set-pane-general">
