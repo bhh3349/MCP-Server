@@ -520,7 +520,7 @@ const Overview = {
       </div>
       <div class="card chat-card">
         <div class="chat-head">
-          <div class="chat-avatar">🤖</div>
+          <div class="chat-avatar" id="chat-avatar">🤖</div>
           <div><div class="tp-title">监控助手</div><div class="chat-sub"><span class="dot green pulse"></span><span id="chat-status">在线</span></div></div>
         </div>
         <div class="inner-box">
@@ -584,6 +584,36 @@ const Overview = {
     const chatMsgs = $("#chat-msgs");
     const chatInput = $("#chat-input");
     const chatStatus = $("#chat-status");
+    // 根据模型供应商自动换头像（内置图标）
+    const refreshAvatar = async () => {
+      try {
+        const ps = await api("/api/agent/providers").catch(() => []);
+        const active = ps.find((p) => p.enabled) || ps[0];
+        const av = $("#chat-avatar");
+        if (!av || !active) return;
+        const name = (active.name || "").toLowerCase();
+        const url = (active.baseUrl || "").toLowerCase();
+        const hay = name + " " + url;
+        const map = [
+          [["anthropic", "claude"], "anthropic.png"],
+          [["openai", "gpt"], "openai.png"],
+          [["deepseek"], "deepseek.png"],
+          [["moonshot", "kimi"], "moonshot.png"],
+          [["zhipu", "glm"], "zhipuai.png"],
+          [["qwen", "tongyi", "aliyun"], "tongyi.png"],
+          [["doubao", "volc"], "doubao.png"],
+          [["longcat"], "longcat.png"],
+        ];
+        let icon = "";
+        for (const [keys, file] of map) {
+          if (keys.some((k) => hay.includes(k))) { icon = file; break; }
+        }
+        if (icon) {
+          av.innerHTML = `<img src="vendor/providers/${icon}" alt="" onerror="this.parentElement.textContent='🤖'">`;
+        }
+      } catch { /* 保持默认 */ }
+    };
+    refreshAvatar();
     const addMsg = (role, text) => {
       const d = document.createElement("div");
       d.className = `chat-msg ${role}`;
