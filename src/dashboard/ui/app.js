@@ -1409,8 +1409,8 @@ const SettingsModal = {
             <div class="model-dir-head"><span class="mf-label"><span class="lang-zh">模型目录</span><span class="lang-en">Models</span></span><button class="link-btn" id="pf-fetch" type="button"><span class='lang-zh'>获取可用模型</span><span class='lang-en'>Fetch Models</span></button></div>
             <div class="model-box" id="model-box"><div class="hint"><span class="lang-zh">暂无模型，请获取或手动添加</span><span class="lang-en">No models, fetch or add</span></div></div>
             <button class="btn sm ghost" id="pf-add-model" type="button" style="margin-top:8px">+ <span class='lang-zh'>添加模型</span><span class='lang-en'>Add Model</span></button>
-            <div class="modal-actions">
-              <button class="btn ghost sm" id="pf-cancel"><span class="lang-zh">取消</span><span class="lang-en">Cancel</span></button>
+            <div class="modal-actions" style="justify-content:flex-start">
+              <button class="btn ghost sm" id="pf-cancel"><span class="lang-zh">返回</span><span class="lang-en">Back</span></button>
               <button class="btn primary sm" id="pf-save"><span class="lang-zh">创建提供商</span><span class="lang-en">Create Provider</span></button>
             </div>
           </div>
@@ -1453,8 +1453,7 @@ const SettingsModal = {
           <div style="margin-top:8px"><button class="btn sm" id="gw-save"><span class="lang-zh">保存</span><span class="lang-en">Save</span></button></div>
         </div>
       </div>
-    </div>
-    <div style="margin-top:14px;display:flex;justify-content:flex-end"><button class="btn sm" id="set-close"><span class="lang-zh">关闭</span><span class="lang-en">Close</span></button></div>`);
+    </div>`);
     $("#modal-box").classList.add("set-wide");
     this.bind();
     this.switchTab(tab);
@@ -1468,7 +1467,6 @@ const SettingsModal = {
     if (tab === "gateway") this.refreshGateway();
   },
   bind() {
-    $("#set-close").addEventListener("click", closeModal);
     $$(".set-tab").forEach((b) => b.addEventListener("click", () => this.switchTab(b.dataset.tab)));
     $(".set-main")?.addEventListener("scroll", () => closeAllCSelect(), { passive: true });
     // ---- 通用 ----
