@@ -677,6 +677,7 @@ const Overview = {
       ]);
       // ---- MCP CORE ----
       $("#ov-tools").textContent = ov.tools.count;
+      $("#badge-tools").textContent = ov.tools.count || "";
       $("#ov-mcp-pill").textContent = "正常";
       $("#ov-mcp-pill").className = "pill green sm";
       const health = ov.toolHealth ?? 1;
@@ -722,6 +723,15 @@ const Overview = {
       // ---- 信道 ----
       $("#ov-ch-count").textContent = chs.length;
       $("#badge-channels").textContent = chs.length || "";
+      // ---- 扩展徽章（插件/技能/连接器） ----
+      api("/api/extensions").then((exts) => {
+        const counts = { plugin: 0, skill: 0, connector: 0 };
+        (exts || []).forEach((e) => { if (counts[e.kind] !== undefined) counts[e.kind]++; });
+        const bp = $("#badge-plugins"), bs = $("#badge-skills"), bc = $("#badge-connectors");
+        if (bp) bp.textContent = counts.plugin || "";
+        if (bs) bs.textContent = counts.skill || "";
+        if (bc) bc.textContent = counts.connector || "";
+      }).catch(() => {});
       $("#ov-ch-list").innerHTML = chs.length ? chs.map((c) => {
         const desc = c.ai?.name || (c.kind === "local" ? "本地直连" : c.kind === "gateway" ? "网关订阅" : c.kind);
         return `<div class="ch-row"><span class="dot ${dotFor(c)}"></span>
