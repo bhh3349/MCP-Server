@@ -4,12 +4,18 @@ MCP ↔ 网关 ↔ 网页 AI 的配对与消息管道。一个网关带 N 条信
 
 ## 接入
 
-| 端点 | 谁连 | 首帧认证 |
+| 端点 | 谁连 | 认证 |
 |---|---|---|
-| `WS /v1/mcp` | MCP（Bridge） | `{type:"auth", token}`，token 为 64 位 hex 长期凭证 |
-| `WS /v1/ai` | 网页 AI | `{type:"join", pairingCode}`，12 位配对码 |
+| `WS /v1/mcp` | MCP（Bridge） | 首帧 `{type:"auth", token}`，token 为 64 位 hex 长期凭证 |
+| `WS /v1/ai` | 网页 AI（可选） | 首帧 `{type:"join", pairingCode}`，12 位配对码 |
+| `POST /v1/ai/claim` | 网页 AI（HTTP） | Body `{pairingCode, ai?}` → 返回 `{channelId}` |
+| `GET /v1/ai/poll?channelId=` | 网页 AI（HTTP） | 长轮询（25s），返回 `{messages: [...]}` |
+| `POST /v1/ai/msg` | 网页 AI（HTTP） | Body `{channelId, data}` → 返回 `{ok:true}` |
 | `GET /healthz` | 探活 | 无需认证 |
 | `GET /metrics` | 指标 | 无需认证 |
+
+> AI 侧推荐用 HTTP（三接口），对标老网关 w2-gw-paircode 的设计；
+> WebSocket `/v1/ai` 保留兼容。
 
 token 生成：`npm run gateway -- --gen-token`，配到网关的 `GATEWAY_TOKENS`（逗号分隔）。
 
@@ -20,8 +26,14 @@ token 生成：`npm run gateway -- --gen-token`，配到网关的 `GATEWAY_TOKEN
        网关 → MCP：{type:"channel.created", reqId, channelId, pairingCode, aiUrl, expiresAt}
        用户把 aiUrl + pairingCode 给网页 AI
 
-步骤2  AI → 网关：{type:"join", pairingCode, ai:{name?, model?}}
+步骤2a（WS） AI → 网关：{type:"join", pairingCode, ai:{name?, model?}}
        网关 → AI：{type:"joined", channelId}
+
+步骤2b（HTTP） AI → 网关：POST /v1/ai/claim {pairingCode, ai:{name?}}
+       网关 → AI：{channelId}
+       AI → 网关：GET /v1/ai/poll?channelId=…（循环长轮询收消息）
+       AI → 网关：POST /v1/ai/msg {channelId, data}（发消息）
+
        网关 → MCP：{type:"peer.join", channelId, ai:{name}}
        —— 双向打通
 ```
@@ -79,7 +91,7 @@ AI 的 MCP 请求在本机执行，响应原路返回。
 
 ```bash
 GATEWAY_PORT=8080 GATEWAY_TOKENS=<64hex>,... npm run gateway
-GATEWAY_PUBLIC_URL=wss://gw.example.com npm run gateway  # aiUrl 用公网地址
+GATEWAY_PUBLIC_URL=https://gw.example.com npm run gateway  # aiUrl 用公网地址（http/https）
 ```
 
 `/metrics` 返回：连接数、信道数、配对尝试/失败、路由消息/字节、慢消费者丢弃、认证失败。

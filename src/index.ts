@@ -10,7 +10,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { buildServer } from "./server.js";
 
 async function main() {
-  const server = buildServer();
+  const { server } = await buildServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
