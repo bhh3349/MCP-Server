@@ -134,16 +134,20 @@ echo ""
 echo "  网关部署成功"
 echo "  ─────────────────────────────"
 if [ -n "$PUBLIC_URL" ]; then
-  base="$PUBLIC_URL"
+  # PUBLIC_URL 可能是 ws(s)://，AI 用 http(s)://
+  ws_base="$PUBLIC_URL"
+  http_base=$(echo "$PUBLIC_URL" | sed 's|^ws://|http://|; s|^wss://|https://|')
 else
   pub_ip=$(curl -s -m 5 ifconfig.me 2>/dev/null || echo '<服务器IP>')
   case "$pub_ip" in *:*) pub_ip="[$pub_ip]" ;; esac
-  base="ws://${pub_ip}:${PORT}"
 fi
-echo "  MCP 接入: ${base}/v1/mcp   (token 认证)"
-echo "  AI  接入: ${base}/v1/ai    (配对码加入)"
+echo "  网关地址: ws://${pub_ip}:${PORT}"
 echo "  MCP token: $TOKEN"
 [ "$TOKEN_GENERATED" = "1" ] && echo "  ↑ token 为本次自动生成，请妥善保存"
+echo ""
+echo "  一键连接串（复制到本地 npm run channel 粘贴即可）:"
+echo "  mcp-gw://${TOKEN}@${pub_ip}:${PORT}"
+echo ""
 echo "  日志: tail -f $GW_HOME/gateway.log"
 echo "  升级: 重新运行本脚本即可"
 echo "  ─────────────────────────────"

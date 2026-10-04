@@ -1,0 +1,1 @@
+{"_comment":"GitHub Personal Access Token (classic 或 fine-grained，需 repo 权限)。去 https://github.com/settings/tokens 生成后填在这里。本文件不要提交到 git。","token":"ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}

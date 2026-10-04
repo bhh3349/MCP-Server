@@ -213,7 +213,7 @@ describe("断线与重连", () => {
     assert.equal(st.ai?.online, false);
 
     // recode 换新配对码
-    const client = (mgr as any).gwClients.get(`ws://127.0.0.1:${gwPort}`);
+    const client = (mgr as any).gwClients.get(`ws://127.0.0.1:${gwPort}`).client;
     const recoded = await client.recode(bindingId);
     assert.match(recoded.pairingCode, /^[A-Za-z0-9]{12}$/);
     assert.notEqual(recoded.pairingCode, pairingCode);
@@ -231,7 +231,7 @@ describe("断线与重连", () => {
     assert.equal(joined.type, "joined");
 
     // 杀掉 MCP 的 bridge（模拟断线）
-    const client = (mgr as any).gwClients.get(`ws://127.0.0.1:${gwPort}`);
+    const client = (mgr as any).gwClients.get(`ws://127.0.0.1:${gwPort}`).client;
     const bridge: Bridge = (client as any).bridge;
     await bridge.close();
 

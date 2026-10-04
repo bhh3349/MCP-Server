@@ -15,6 +15,9 @@ async function main() {
   const port = process.env["MCP_LOCAL_PORT"]
     ? parseInt(process.env["MCP_LOCAL_PORT"], 10)
     : 0;
+  // 固定 token：MCP_LOCAL_TOKEN=32 位 hex。不设则每次随机生成（重启即换 URL）。
+  // 轮换 = 换个 token 重启；撤销 = 直接关掉进程。
+  const token = process.env["MCP_LOCAL_TOKEN"] || undefined;
 
   const bridge = new Bridge({ gatewayUrl: "local", autoReconnect: false });
   const mgr = new ChannelManager(
@@ -22,7 +25,7 @@ async function main() {
     async () => (await buildServer()).server,
   );
 
-  const ch = await mgr.openLocalChannel("local", port);
+  const ch = await mgr.openLocalChannel("local", port, token);
 
   console.log("");
   console.log("  本地信道已开启");

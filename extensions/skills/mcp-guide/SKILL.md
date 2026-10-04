@@ -12,28 +12,47 @@ MCP-Server 是用户 PC 上的完整本地系统：你可以读写文件、执�
 
 ## 第一步：了解环境
 
-先调用 `system_info` 看操作系统、架构、主机名；
-调用 `health` 确认服务正常。
+先调用 `server_info`：版本、能力、限额、并发模型、沙箱边界一次看清。
+再 `system_info` 看操作系统、`health` 确认服务正常。
 
 ## 文件操作
 
-- `list_files`：列目录。`recursive=true` 递归（最多 5 层，500 条）。
-- `read_file`：读文本文件。**大文件必须分页**：`offset` + `limit`
-  （单次最多 2000 行）。先读前 50 行看结构，再决定读哪里。
-- `write_file`：原子写入（临时文件 + rename，不会写坏原文件）。
-  **改已有文件时先 `read_file` 再写**；重要文件先用 `file_hash`
-  取 SHA-256，写入时传 `expected_sha256`，防止覆盖了别人刚改的内容。
-- `file_hash`：取文件 SHA-256，用于写入前校验和确认文件一致性。
+- `list_files`：列目录，条目带 `path/name/type/size/mtimeMs`。
+  `recursive=true` 递归（最多 5 层）；`glob="*.ts"` 按名过滤；
+  `offset`/`limit` 分页（默认 200，上限 1000）。
+- `read_file`：两种模式。
+  - 文本模式（默认）：按行分页，`offset`（0 基）+ `limit`（上限 2000 行）。
+    大文件必须分页。BOM 默认剥离（`stripBom:false` 可保留）。
+  - 字节模式：传 `startByte` / `maxBytes` 即启用，按字节切片，
+    返回 `totalBytes`/`startByte`/`truncated`，适合大文件定位和二进制。
+  - `encoding="base64"`：内容按 base64 返回，**二进制无损**
+    （默认 utf8 读二进制有损）。`bytes` = 内容实际字节数。
+- `write_file`：原子写入（临时文件 + rename）。
+  - `expectedHash`：传文件当前 SHA-256， mismatch 即拒写且文件分毫不动
+    （报错 `stale-file` 带**完整**哈希，可直接重试）；
+    传 `"absent"` = 要求文件必须不存在（新建专用，取代 sha256("") 偏方）。
+  - 回执带 `previousBytes`（覆盖前大小，不存在为 null）和 `overwrote`。
+  - **改已有文件时先 `file_hash` 再写**。
+- `file_hash`：取文件 SHA-256。
+- 错误码前缀（可直接分支）：`file-not-found:` / `is-directory:` /
+  `not-a-directory:` / `permission-denied:` / `path-escapes-root:` /
+  `stale-file:`。不再有裸 `ENOENT` / `EISDIR`。
 - 所有路径都是相对于服务端 root 的相对路径；Windows 上用 `C:/...`
   或相对路径，不要混用反斜杠。
 
 ## 命令执行
 
 - `exec`：执行 shell 命令（Windows 上是 PowerShell，POSIX 是 sh）。
-  - `timeout_ms`：超时时间，默认 30 秒；长时间任务调大或走后台。
-  - `background=true`：后台运行，立刻返回 `job_id`；
-    再用 `job_output` 轮询输出，`job_kill` 终止。
-  - **超过 1 分钟的任务一律用后台模式**，不要让前台调用超时。
+  编码安全：中文/引号/特殊字符直传，不会踩 PowerShell 5.1 的引号坑。
+  - `timeoutMs`：默认 30000，上限 300000。**超过 1 分钟的任务一律后台化**。
+  - 统一作业对象：前台/后台/`job_output`/`job_kill` 回执形状一致——
+    `{jobId?, status, done, killed, stdout, stderr, exitCode, durationMs, truncated}`，
+    `status` 为 `running` / `done` / `killed`。
+  - `background=true`：立刻返回 `jobId`（`status:"running"`），
+    用 `job_output` 轮询，`job_kill` 终止（kill 等进程真正退出才返回，
+    之后立刻 `job_output` 即得 `done:true`，已产出输出保留）。
+  - **要并行必须走后台**：服务端无并发上限（20 路实测并行因子 18），
+    但某些客户端会把前台调用串行化。
 - 先 `exec` 跑 `pwd` / `ls` 确认工作目录，再做文件操作。
 
 ## 扩展能力
@@ -48,8 +67,12 @@ MCP-Server 是用户 PC 上的完整本地系统：你可以读写文件、执�
 ## 信道与多 AI
 
 - 你通过一条信道连接 MCP-Server；MCP 侧管理所有信道。
+- **心跳探活**：`GET /healthz`（本地信道）免初始化，返回 `{ok, sessions}`。
+  不要用 `DELETE` 探活——它只关闭当前会话（token 不受影响，可重建）。
 - 如果用户说"让另一个 AI 也加入"，告诉用户把 MCP 地址和新的配对码
   发给那个 AI（每个 AI 用独立配对码、独立信道）。
+- 网关信道：用户在 MCP 侧建信道后会拿到配对码+AI 接入地址，
+  转交 AI 即可加入；配对码一次性、15 分钟有效，AI 断线可找用户重配。
 - 长时间无操作信道保持；如果工具调用突然全部失败，可能是信道断了，
   告诉用户检查 MCP-Server 是否在线。
 
