@@ -53,13 +53,23 @@ async function main() {
   console.log("  MCP 信道管理");
   console.log("  ─────────────────────────────");
 
-  // ---- 步骤0：网关连接信息 ----
+  // ---- 步骤0：网关连接信息（支持粘贴 mcp-gw://token@host:port 一键导入） ----
   const saved = loadConfig();
   const lastUsed = saved[0];
 
   const defaultUrl = process.env["GATEWAY_URL"] || lastUsed?.url || "";
-  const urlInput = await ask(`  网关地址${defaultUrl ? ` [${defaultUrl}]` : ""}: `);
-  const gatewayUrl = urlInput || defaultUrl;
+  const urlInput = await ask(`  网关地址${defaultUrl ? ` [${defaultUrl}]` : ""}\n  （或直接粘贴 mcp-gw://token@host:port）: `);
+  let gatewayUrl = urlInput || defaultUrl;
+  let pastedToken = "";
+  // 解析一键连接串 mcp-gw://<token>@<host>:<port>
+  const m = gatewayUrl.match(/^mcp-gw:\/\/([^@]+)@(.+)$/);
+  if (m && m[1] && m[2]) {
+    pastedToken = m[1];
+    let host: string = m[2];
+    if (!/^wss?:\/\//.test(host)) host = `ws://${host}`;
+    gatewayUrl = host;
+    console.log(`  已从连接串解析网关地址`);
+  }
   if (!gatewayUrl) {
     console.log("  未输入网关地址，退出");
     rl.close();
@@ -67,7 +77,7 @@ async function main() {
   }
 
   const savedToken = saved.find((g) => g.url === gatewayUrl)?.token;
-  const defaultToken = process.env["GATEWAY_TOKEN"] || savedToken || "";
+  const defaultToken = process.env["GATEWAY_TOKEN"] || pastedToken || savedToken || "";
   const tokenInput = await ask(
     `  Token${defaultToken ? ` [${defaultToken.slice(0, 8)}…已保存，直接回车使用]` : ""}: `,
   );

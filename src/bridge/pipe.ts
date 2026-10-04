@@ -5,26 +5,49 @@
  * 管道一旦打开，MCP Server 和网关之间就可以双向传输数据。
  *
  * Bridge 本身不理解业务协议，它只负责：
- * - 建立到底层传输（到网关的长连接）
+ * - 建立到底层传输（到网关的 WebSocket 长连接 + token 认证）
  * - 双向转发数据
- * - 关闭时清理
+ * - 断线自动重连（退避），关闭时清理
  *
- * 建信道的协议逻辑在 ../channel/。
+ * 建信道的协议逻辑在 ../channel/gateway-client.ts。
  */
 import { EventEmitter } from "node:events";
+import { WebSocket } from "ws";
+import { HEARTBEAT_INTERVAL_MS } from "../channel/liveness.js";
 
 export type BridgeState = "closed" | "opening" | "open" | "error";
 
 export interface BridgeOptions {
   gatewayUrl: string;
-  /** 心跳间隔 ms */
+  /** 网关 token（64 hex）：MCP 连接网关的长期凭证 */
+  token?: string;
+  /** 心跳间隔 ms，默认 30s */
   heartbeatMs?: number;
+  /** 是否自动重连（默认 true）；手动 close() 时不重连 */
+  autoReconnect?: boolean;
+  /** 重连退避序列 ms，默认 [5s, 10s, 30s, 60s]，之后固定 60s */
+  reconnectBackoffMs?: number[];
+  /** 认证超时 ms，默认 10s */
+  authTimeoutMs?: number;
+}
+
+const DEFAULT_BACKOFF = [5_000, 10_000, 30_000, 60_000];
+const MCP_WS_PATH = "/v1/mcp";
+
+/** 认证失败（坏 token）：永久性错误，不重连，直接抛给调用方 */
+export class AuthError extends Error {
+  readonly permanent = true;
 }
 
 export class Bridge extends EventEmitter {
   private state: BridgeState = "closed";
   private ws: WebSocket | null = null;
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectAttempts = 0;
+  private manualClose = false;
+  /** 该 Bridge 承载的信道 bindingId 列表，心跳时上报 */
+  private channelIds = new Set<string>();
 
   constructor(private opts: BridgeOptions) {
     super();
@@ -34,32 +57,182 @@ export class Bridge extends EventEmitter {
     return this.state;
   }
 
+  attachChannel(bindingId: string): void {
+    this.channelIds.add(bindingId);
+  }
+
+  detachChannel(bindingId: string): void {
+    this.channelIds.delete(bindingId);
+  }
+
   /** 打开管道 */
   async open(): Promise<void> {
     if (this.state === "open" || this.state === "opening") return;
+    this.manualClose = false;
+    this.reconnectAttempts = 0;
+    await this.connect();
+  }
+
+  private wsUrl(): string {
+    const base = this.opts.gatewayUrl.replace(/\/+$/, "");
+    // gatewayUrl 可能是 ws(s):// 或 http(s)://，统一转成 ws(s)://
+    const wsBase = base.replace(/^http(s?):\/\//, "ws$1://");
+    return `${wsBase}${MCP_WS_PATH}`;
+  }
+
+  private async connect(): Promise<void> {
     this.state = "opening";
     this.emit("state", this.state);
 
-    // TODO: 实际的传输建立（WebSocket / SSE 长连接）
-    // const ws = new WebSocket(this.opts.gatewayUrl + "/bridge");
-    // await once(ws, "open");
+    try {
+      await this.dial();
+    } catch (err) {
+      this.state = "error";
+      this.emit("state", this.state);
+      if (err instanceof AuthError) {
+        // 坏 token：永久失败，不重连，如实抛给调用方
+        this.emit("auth_failed", (err as Error).message);
+        throw err;
+      }
+      // 瞬时失败：后台按退避重连，但如实告诉调用方这次没连上
+      this.scheduleReconnect();
+      throw err;
+    }
 
     this.state = "open";
     this.emit("state", this.state);
-    this.emit("open");
+    this.emit(this.reconnectAttempts > 0 ? "reconnected" : "open");
+    this.reconnectAttempts = 0;
 
-    // 心跳保活
-    const hb = this.opts.heartbeatMs ?? 30000;
-    this.heartbeatTimer = setInterval(() => this.emit("heartbeat"), hb);
+    // 心跳：每 30s 上报一次，携带本 Bridge 上的全部信道
+    const hb = this.opts.heartbeatMs ?? HEARTBEAT_INTERVAL_MS;
+    this.heartbeatTimer = setInterval(() => {
+      this.send(
+        JSON.stringify({
+          type: "ping",
+          channels: [...this.channelIds],
+          ts: Date.now(),
+        }),
+      );
+    }, hb);
+    if (this.heartbeatTimer.unref) this.heartbeatTimer.unref();
   }
 
-  /** 关闭管道 */
-  async close(): Promise<void> {
-    if (this.heartbeatTimer) {
-      clearInterval(this.heartbeatTimer);
-      this.heartbeatTimer = null;
+  /** 建连 + token 认证，失败抛错 */
+  private dial(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(this.wsUrl(), {
+        perMessageDeflate: false,
+        maxPayload: 32 * 1024 * 1024,
+      });
+      this.ws = ws;
+
+      const authTimeout = setTimeout(() => {
+        ws.close(4001, "auth timeout");
+        reject(new Error("gateway auth timeout"));
+      }, this.opts.authTimeoutMs ?? 10_000);
+      if (authTimeout.unref) authTimeout.unref();
+
+      ws.on("open", () => {
+        // 首帧必须是 auth
+        ws.send(JSON.stringify({ type: "auth", token: this.opts.token ?? "" }));
+      });
+
+      ws.on("message", (buf) => {
+        const raw = buf.toString("utf-8");
+        // 认证阶段：等 auth.ok
+        if (this.state === "opening") {
+          let msg: any;
+          try {
+            msg = JSON.parse(raw);
+          } catch {
+            clearTimeout(authTimeout);
+            reject(new Error("gateway auth: invalid response"));
+            ws.close();
+            return;
+          }
+          if (msg?.type === "auth.ok") {
+            clearTimeout(authTimeout);
+            this.wire(ws);
+            resolve();
+          } else {
+            clearTimeout(authTimeout);
+            reject(new AuthError(`gateway auth failed: ${msg?.reason ?? "unknown"}`));
+            ws.close();
+          }
+          return;
+        }
+        this.emit("message", raw);
+      });
+
+      ws.on("close", () => {
+        clearTimeout(authTimeout);
+        // opening 阶段断开 = 建连失败
+        if (this.state === "opening") {
+          reject(new Error("gateway connection closed during auth"));
+          return;
+        }
+        this.onUnexpectedClose();
+      });
+
+      ws.on("error", () => {
+        // error 后 close 事件会跟上，统一在 close 处理
+        if (this.state === "opening") {
+          clearTimeout(authTimeout);
+          reject(new Error("gateway connection error"));
+        }
+      });
+    });
+  }
+
+  /** 认证通过后：把后续消息转成 message 事件 */
+  private wire(ws: WebSocket): void {
+    ws.removeAllListeners("message");
+    ws.on("message", (buf) => {
+      this.emit("message", buf.toString("utf-8"));
+    });
+  }
+
+  /** transport 意外断开：走重连流程（快路径的 MCP 侧） */
+  private onUnexpectedClose(): void {
+    this.clearHeartbeat();
+    this.ws = null;
+    if (this.state === "open") {
+      this.state = "error";
+      this.emit("state", this.state);
+      this.emit("drop"); // 通知 ChannelManager：信道进入 mcp_lost 倒计时
     }
-    this.ws?.close();
+    this.scheduleReconnect();
+  }
+
+  private scheduleReconnect(): void {
+    if (this.manualClose) return;
+    if (this.opts.autoReconnect === false) return;
+    if (this.reconnectTimer) return;
+
+    const backoff = this.opts.reconnectBackoffMs ?? DEFAULT_BACKOFF;
+    const delay = backoff[Math.min(this.reconnectAttempts, backoff.length - 1)]!;
+    this.reconnectAttempts++;
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.connect();
+    }, delay);
+    if (this.reconnectTimer.unref) this.reconnectTimer.unref();
+    this.emit("reconnect_scheduled", { attempt: this.reconnectAttempts, delayMs: delay });
+  }
+
+  /** 手动关闭管道：不触发重连 */
+  async close(): Promise<void> {
+    this.manualClose = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.clearHeartbeat();
+    try {
+      this.ws?.close(1000, "manual close");
+    } catch { /* noop */ }
     this.ws = null;
     this.state = "closed";
     this.emit("state", this.state);
@@ -68,8 +241,16 @@ export class Bridge extends EventEmitter {
 
   /** 通过管道发送数据（管道必须已打开） */
   send(data: string | Buffer): void {
-    if (this.state !== "open") throw new Error("bridge is not open");
-    // TODO: ws.send(data)
-    this.emit("send", data);
+    if (this.state !== "open" || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error("bridge is not open");
+    }
+    this.ws.send(data);
+  }
+
+  private clearHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
   }
 }
