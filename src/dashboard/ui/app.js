@@ -1388,7 +1388,7 @@ const SettingsModal = {
             <div class="field"><label><span class="lang-zh">密码</span><span class="lang-en">Password</span></label><input id="gw-pass" type="password" placeholder="只用于本次连接，不保存" data-ph-en="This connection only"</div>
           </div>
           <details class="gw-adv"><summary><span class="lang-zh">自定义部署命令</span><span class="lang-en">Custom Command</span>（<span class="lang-zh">选填，会覆盖上面的字段</span><span class="lang-en">Optional, overrides above</span>）</summary>
-            <div class="field" style="margin-top:8px"><textarea id="gw-custom-cmd" rows="2" class="mono" spellcheck="false" placeholder="空着用系统内置命令" data-ph-en="Empty = built-in"</textarea></div>
+            <div class="field" style="margin-top:8px"><textarea id="gw-custom-cmd" rows="2" class="mono" spellcheck="false" placeholder="空着用系统内置命令" data-ph-en="Empty = built-in"></textarea></div>
           </details>
           <div style="margin:8px 0;display:flex;gap:8px;justify-content:flex-end">
             <button class="btn sm primary" id="gw-deploy-btn"><span class="lang-zh">一键部署</span><span class="lang-en">Deploy</span></button>
@@ -1397,7 +1397,7 @@ const SettingsModal = {
           <div class="hint"><span class="lang-zh">点一键部署会弹出</span><span class="lang-en">Opens</span> SSH <span class="lang-zh">终端并自动执行，进度实时显示在终端里</span><span class="lang-en">terminal, auto-runs</span></div>
           <div class="set-sec-title" style="margin-top:16px"><span class='lang-zh'>默认网关</span><span class='lang-en'>Default Gateway</span></div>
           <div class="hint" style="margin-bottom:8px"><span class='lang-zh'>新建网关信道时自动填充，只存本机浏览器</span><span class='lang-en'>Auto-fill, browser only</span></div>
-          <div class="field"><label><span class="lang-zh">手动导入</span><span class="lang-en">Import</span></label><textarea id="gw-import" rows="2" placeholder="粘贴 mcp-gw://token@host:port 连接串、部署输出，或网关地址 + Token，自动解析" data-ph-en="Paste connection string or URL + Token"</textarea></div>
+          <div class="field"><label><span class="lang-zh">手动导入</span><span class="lang-en">Import</span></label><textarea id="gw-import" rows="2" placeholder="粘贴 mcp-gw://token@host:port 连接串、部署输出，或网关地址 + Token，自动解析" data-ph-en="Paste connection string or URL + Token"></textarea></div>
           <div style="margin:2px 0 10px"><button class="btn sm" id="gw-import-btn"><span class="lang-zh">解析导入</span><span class="lang-en">Parse & Import</span></button></div>
           <div class="field"><label><span class="lang-zh">网关地址</span><span class="lang-en">Gateway URL</span></label><input id="gw-url" placeholder="ws://23.251.34.248:8080"></div>
           <div class="field"><label><span class="lang-zh">网关</span><span class="lang-en">Gateway</span> Token</label><input id="gw-token" type="password" placeholder="64 位 hex" data-ph-en="64-bit hex"></div>
