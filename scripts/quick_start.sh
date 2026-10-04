@@ -138,7 +138,7 @@ if [ -n "$PUBLIC_URL" ]; then
   ws_base="$PUBLIC_URL"
   http_base=$(echo "$PUBLIC_URL" | sed 's|^ws://|http://|; s|^wss://|https://|')
 else
-  pub_ip=$(curl -s -m 5 ifconfig.me 2>/dev/null || echo '<服务器IP>')
+  pub_ip=$(curl -4 -s -m 5 ifconfig.me 2>/dev/null || curl -s -m 5 ifconfig.me 2>/dev/null || echo '<服务器IP>')
   case "$pub_ip" in *:*) pub_ip="[$pub_ip]" ;; esac
 fi
 echo "  网关地址: ws://${pub_ip}:${PORT}"
