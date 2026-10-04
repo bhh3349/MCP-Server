@@ -482,7 +482,7 @@ canvas.chart { width: 100%; display: block; }
   animation: fadein .18s ease;
 }
 #modal-box {
-  margin-top: 12vh; width: 520px; max-width: calc(100vw - 40px); max-height: 76vh; overflow-y: auto;
+  margin-top: 10vh; width: 520px; max-width: calc(100vw - 40px);
   background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 20px;
   box-shadow: 0 24px 60px rgba(0,0,0,.5);
 }
