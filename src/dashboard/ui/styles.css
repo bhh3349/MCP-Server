@@ -432,7 +432,9 @@ html[data-lang="en"] .lang-zh { display: none !important; }
 /* 成功率卡片：上排圆环+失败最多，下排调用详情 */
 .rel-top { display: flex; align-items: flex-start; gap: 14px; }
 .rel-top .donut-center { flex-shrink: 0; }
-.rel-fails { flex: 1; min-width: 0; min-height: 120px; }
+.rel-fails { flex: 1; min-width: 0; height: 160px; display: flex; flex-direction: column; }
+#ov-fails { flex: 1; display: flex; flex-direction: column; }
+.fail-empty { flex: 1; display: flex; align-items: center; justify-content: center; }
 .fail-title { font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
 .fail-head { display: grid; grid-template-columns: 1fr 36px 36px; font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px; background: rgba(255,255,255,.03); border-radius: 6px 6px 0 0; border: 1px solid rgba(255,255,255,.06); border-bottom: none; }
 .fail-head span:nth-child(2), .fail-head span:nth-child(3) { text-align: center; }
