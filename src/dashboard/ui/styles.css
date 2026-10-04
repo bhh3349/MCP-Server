@@ -440,15 +440,18 @@ input, select, textarea { font-family: inherit; }
 .spark { margin-top: 8px; }
 .bridge-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
 .bridge-state { font-size: 12px; font-weight: 700; }
-.ch-list { display: flex; flex-direction: column; max-height: 132px; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
+.ch-card { display: flex; flex-direction: column; min-height: 0; }
+.ch-list { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
 .ch-row {
-  display: flex; align-items: center; gap: 8px; height: 35px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 8px; min-height: 35px; flex-shrink: 0; padding: 6px 0;
   border-bottom: 1px solid rgba(255,255,255,.04); font-size: 12px;
 }
 .ch-row:last-child { border-bottom: none; }
 .ch-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ch-proj { margin-left: auto; color: var(--text3); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; font-family: var(--font-m); }
 .ch-empty { color: var(--text3); font-size: 12px; padding: 8px 0; }
+.text-btn { background: none; border: none; color: var(--accent2); font-size: 12px; font-weight: 600; cursor: pointer; padding: 2px 4px; }
+.text-btn:hover { text-decoration: underline; }
 
 canvas.chart { width: 100%; display: block; }
 .rank-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-size: 11.5px; }
