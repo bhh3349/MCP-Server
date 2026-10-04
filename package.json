@@ -32,9 +32,9 @@
     "build:bundle": "esbuild src/gateway/cli.ts --bundle --platform=node --format=cjs --minify --outfile=release/gateway.cjs",
     "channel": "tsx src/channel/cli.ts",
     "dashboard": "tsx src/dashboard/cli.ts",
-    "tauri": "tauri",
-    "tauri:dev": "tauri dev",
-    "tauri:build": "npm run build && tauri build"
+    "tauri": "npx tauri",
+    "tauri:dev": "npx tauri dev",
+    "tauri:build": "npm run build && npx tauri build"
   },
   "type": "module",
   "version": "0.1.0"
