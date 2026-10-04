@@ -264,6 +264,7 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
         calls: s,
         errors: logStore.errorStats(),
         toolHealth: called.length > 0 ? healthy / called.length : 1,
+        recentCalls: stats.recent(15),
       });
     }
 

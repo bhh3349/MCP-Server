@@ -14,10 +14,19 @@ export interface ToolStat {
   lastOk: boolean;
 }
 
+export interface CallRecord {
+  name: string;
+  ts: number;
+  ms: number;
+  ok: boolean;
+}
+
 export class ToolStats {
   private map = new Map<string, ToolStat>();
   /** 工具目录：name → description（registerTool 包裹时采集） */
   private catalog = new Map<string, string>();
+  /** 最近调用环形缓冲（供 Dashboard 滚动展示） */
+  private recentCalls: CallRecord[] = [];
 
   describe(name: string, description: string): void {
     if (description && !this.catalog.has(name)) this.catalog.set(name, description);
@@ -44,6 +53,13 @@ export class ToolStats {
       const msg = err instanceof Error ? err.message : String(err);
       logStore.add({ level: "error", source: `tool:${name}`, text: `${name} 调用失败 (${ms}ms): ${msg}` });
     }
+    this.recentCalls.push({ name, ts: Date.now(), ms, ok });
+    if (this.recentCalls.length > 30) this.recentCalls.shift();
+  }
+
+  /** 最近 N 次调用（新→旧） */
+  recent(n = 15): CallRecord[] {
+    return this.recentCalls.slice(-n).reverse();
   }
 
   list(): (ToolStat & { avgMs: number; errRate: number })[] {
