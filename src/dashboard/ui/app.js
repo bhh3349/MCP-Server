@@ -1175,7 +1175,7 @@ const SettingsModal = {
           <details class="gw-adv"><summary>自定义部署命令（选填，会覆盖上面的字段）</summary>
             <div class="field" style="margin-top:8px"><textarea id="gw-custom-cmd" rows="2" class="mono" spellcheck="false" placeholder="空着用系统内置命令"></textarea></div>
           </details>
-          <div style="margin:8px 0;display:flex;gap:8px">
+          <div style="margin:8px 0;display:flex;gap:8px;justify-content:flex-end">
             <button class="btn sm primary" id="gw-deploy-btn">一键部署</button>
             <button class="btn sm" id="gw-ssh-btn">SSH 终端</button>
           </div>
