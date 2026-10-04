@@ -601,6 +601,7 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
         description: e.manifest.description,
         enabled: e.enabled,
         toolNames: e.toolNames,
+        resourceUris: e.resourceUris,
       })));
     }
 
