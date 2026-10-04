@@ -310,6 +310,9 @@ input, select, textarea { font-family: inherit; }
 .tp-card > .ov-eyebrow, .log-card > .ov-eyebrow,
 .rank-card > .ov-eyebrow, .rel-card > .ov-eyebrow { display: block; margin-bottom: 6px; }
 .log-card > .ov-eyebrow .live-mini { float: right; }
+/* 语言：中文隐藏英文副标题，英文隐藏中文标题 */
+html[data-lang="zh"] .lang-en { display: none !important; }
+html[data-lang="en"] .lang-zh { display: none !important; }
 .ov-title { font-family: var(--font-d); font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
 .ov-top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; flex-shrink: 0; height: 126px; }
 /* 顶排卡片内部压紧（mcpcore 保持原布局） */
