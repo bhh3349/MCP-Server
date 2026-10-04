@@ -316,11 +316,12 @@ html[data-lang="en"] .lang-zh { display: none !important; }
 .ov-title { font-family: var(--font-d); font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
 .ov-top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; flex-shrink: 0; height: 126px; }
 /* 顶排卡片内部压紧（mcpcore 保持原布局） */
-.ov-top .card:not(.mcpcore) { padding: 10px 14px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+.ov-top .card:not(.mcpcore) { padding: 10px 14px; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; }
 .ov-top .card:not(.mcpcore) .stat-num { font-size: 26px; }
 .ov-top .card:not(.mcpcore) .spark { margin-top: 4px; height: 22px; }
-.ov-top .card:not(.mcpcore) .gw-foot { margin-top: 4px; }
+.ov-top .card:not(.mcpcore) .gw-foot { margin-top: auto; padding-top: 4px; }
 .ov-top .card:not(.mcpcore) .stat-sub { margin-top: 4px; }
+.ov-top .card:not(.mcpcore) .br-pipes { margin-top: auto; padding-top: 4px; }
 .ov-top .card.mcpcore { overflow: hidden; }
 .ov-main {
   display: grid;
@@ -368,13 +369,14 @@ html[data-lang="en"] .lang-zh { display: none !important; }
 .icon-btn:hover { color: #fff; border-color: var(--accent2); }
 
 /* MCP CORE */
-.mcpcore { display: flex; align-items: center; justify-content: space-between;
+.mcpcore { display: flex; align-items: stretch; justify-content: space-between;
   background: linear-gradient(135deg, rgba(99,102,241,.2), rgba(139,92,246,.06));
   border-color: rgba(139,92,246,.3); }
+.mcpcore-main { display: flex; flex-direction: column; justify-content: flex-start; }
 .mcpcore-status { font-size: 22px; font-weight: 800; margin: 4px 0 2px; letter-spacing: -.01em; }
-.mcpcore-sub { font-size: 11px; color: var(--text3); }
+.mcpcore-sub { font-size: 11px; color: var(--text3); margin-top: auto; padding-top: 4px; }
 .mcpcore-sub b { color: var(--text); font-size: 12px; }
-.mcpcore-gauge { flex-shrink: 0; position: relative; }
+.mcpcore-gauge { flex-shrink: 0; position: relative; align-self: center; }
 .gauge-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 .gauge-label b { font-size: 15px; font-weight: 800; line-height: 1.1; }
 .gauge-label span { font-size: 9px; color: var(--text3); }
