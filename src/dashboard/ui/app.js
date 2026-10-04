@@ -532,7 +532,7 @@ const Overview = {
     <div class="ov-main">
       <div class="card tp-card">
         <div class="ov-eyebrow lang-en">DATA THROUGHPUT STREAM</div>
-        <div class="tp-head"><span class="tp-title lang-zh">调用吞吐</span>
+        <div class="tp-head"><span class="tp-title lang-zh">调用吞吐</span><span class="tp-title lang-en">Throughput</span>
           <span class="tp-legend"><i class="lg-dot" style="background:#8b5cf6"></i><span class="lang-zh">请求</span><span class="lang-en">Req</span> <b class="mono" id="ov-req-min">–</b>/min
           <i class="lg-dot" style="background:#34d399"></i><span class="lang-zh">成功</span><span class="lang-en">OK</span> <b class="mono" id="ov-ok-min">–</b>/min</span>
         </div>
@@ -548,7 +548,7 @@ const Overview = {
       </div>
       <div class="card rank-card">
         <div class="ov-eyebrow lang-en">TOOL ACTIVITY</div>
-        <div class="tp-head"><span class="tp-title lang-zh">工具调用排行</span><span class="hint mono">LIVE · TOP 8</span></div>
+        <div class="tp-head"><span class="tp-title lang-zh">工具调用排行</span><span class="tp-title lang-en">Tool Rankings</span><span class="hint mono">LIVE · TOP 8</span></div>
         <div class="inner-box">
           <div class="inner-title"><span class="lang-zh">排行</span><span class="lang-en">Rank</span></div>
           <div id="ov-rank"></div>
@@ -576,13 +576,13 @@ const Overview = {
       </div>
       <div class="card log-card">
         <div class="ov-eyebrow lang-en">LIVE EVENT STREAM <span class="live-mini"><span class="dot green pulse"></span>LIVE</span></div>
-        <div class="tp-title lang-zh">实时日志流</div>
+        <div class="tp-title lang-zh">实时日志流</div><div class="tp-title lang-en">Live Logs</div>
         <div class="log-stream slim" id="ov-logs"></div>
         <div class="log-foot"><span class="hint"><span class="lang-zh">自动滚动</span><span class="lang-en">Auto-scroll</span></span><span class="follow"><span class="dot green"></span><span class="lang-zh">跟随中</span><span class="lang-en">Following</span></span></div>
       </div>
       <div class="card rel-card">
         <div class="ov-eyebrow lang-en">RELIABILITY</div>
-        <div class="tp-head"><span class="tp-title lang-zh">调用成功率</span><span class="hint mono">60 SEC</span></div>
+        <div class="tp-head"><span class="tp-title lang-zh">调用成功率</span><span class="tp-title lang-en">Success Rate</span><span class="hint mono">60 SEC</span></div>
         <div class="inner-box">
           <div class="rel-top">
             <div class="donut-center">
@@ -855,7 +855,7 @@ const ChannelsPage = {
 
   async show() {
     const chs = await api("/api/channels").catch(() => []);
-    $("#ch-total").innerHTML = `<span class='lang-zh'>共</span> ${chs.length} 条`;
+    $("#ch-total").innerHTML = `<span class='lang-zh'>共</span><span class='lang-en'>Total</span> ${chs.length} <span class='lang-zh'>条</span><span class='lang-en'></span>`;
     $("#ch-tbody").innerHTML = chs.map((c) => `
       <tr><td><span class="dot ${dotFor(c)}"></span></td>
         <td><b>${esc(c.name)}</b><div class="hint mono" style="font-size:10.5px">${esc(c.bindingId)}</div></td>
@@ -1117,7 +1117,7 @@ const ToolsPage = {
     if (!ov) return;
     this.tools = ov.tools.list; this.stats = st?.tools || []; this.disabled = new Set(st?.disabled || []);
     $("#badge-tools").textContent = this.tools.length || "";
-    $("#tool-total").innerHTML = `<span class='lang-zh'>共</span> ${this.tools.length} <span class='lang-zh'>个</span>`;
+    $("#tool-total").innerHTML = `<span class='lang-zh'>共</span><span class='lang-en'>Total</span> ${this.tools.length} <span class='lang-zh'>个</span><span class='lang-en'></span>`;
     this.render($("#tool-q").value);
   },
   render(q = "") {
@@ -1653,6 +1653,7 @@ const PAGES = {
 };
 
 (async function boot() {
+  applyLang(); // 初始化语言（placeholder/title 切换）
   // Tauri 桌面端：显示窗口控制按钮
   try {
     if (window.__TAURI__) {
