@@ -485,9 +485,9 @@ const Overview = {
         </div>
         <div class="br-pipes"><span class="hint" id="ov-pipe-count">– 条管道</span><div class="pipe-bars" id="ov-pipe-bars"></div></div>
       </div>
-      <div class="card">
-        <div class="ov-eyebrow">信道&nbsp;<span id="ov-ch-count">0</span>
-          <button class="icon-btn" id="ov-add-ch" title="添加信道">＋</button>
+      <div class="card ch-card">
+        <div class="ov-eyebrow">信道<span class="hint" style="margin-left:6px"><span id="ov-ch-count">0</span> 个</span>
+          <button class="text-btn" id="ov-add-ch" style="margin-left:auto">添加</button>
         </div>
         <div class="ch-list" id="ov-ch-list"><div class="ch-empty">暂无信道</div></div>
       </div>
@@ -712,7 +712,7 @@ const Overview = {
         return `<div class="ch-row"><span class="dot ${dotFor(c)}"></span>
           <span class="ch-name">${esc(c.name)}</span>
           <span class="ch-proj">${esc(desc)}</span></div>`;
-      }).join("") : `<div class="ch-empty">暂无信道，点击 ＋ 添加</div>`;
+      }).join("") : `<div class="ch-empty">暂无信道，点击右上角添加</div>`;
       // ---- 吞吐 ----
       const now = Date.now(), total = st.summary.totalCalls;
       if (this.lastTs) {
