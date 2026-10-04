@@ -328,7 +328,7 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
     }
 
     if (method === "GET" && path === "/api/stats/tools") {
-      return json(res, { summary: stats.summary(), tools: stats.list() });
+      return json(res, { summary: stats.summary(), tools: stats.list(), disabled: [...disabledTools] });
     }
 
     if (method === "GET" && path === "/api/logs") {
@@ -665,6 +665,26 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
       }
       logStore.add({ level: "info", source: "dashboard", text: `已安装${body.kind}: ${body.name}，重启后生效` });
       return json(res, { ok: true, name: body.name });
+    }
+
+    // 卸载扩展：DELETE /api/extensions/:name
+    const delExtMatch = path.match(/^\/api\/extensions\/([^/]+)$/);
+    if (method === "DELETE" && delExtMatch?.[1]) {
+      const name = decodeURIComponent(delExtMatch[1]);
+      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name)) return json(res, { error: "invalid name" }, 400);
+      const { rm, access } = await import("node:fs/promises");
+      const extRoot = join(process.cwd(), "extensions");
+      const kinds = ["plugins", "skills", "connectors"];
+      let found = "";
+      for (const k of kinds) {
+        const dir = join(extRoot, k, name);
+        if (!dir.startsWith(extRoot)) continue;
+        try { await access(dir); found = dir; break; } catch { /* continue */ }
+      }
+      if (!found) return json(res, { error: "扩展不存在" }, 404);
+      await rm(found, { recursive: true, force: true });
+      logStore.add({ level: "info", source: "dashboard", text: `已卸载扩展: ${name}，重启后生效` });
+      return json(res, { ok: true, name });
     }
 
     if (method === "POST" && path === "/api/tools/call") {
