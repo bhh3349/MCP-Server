@@ -800,7 +800,7 @@ const Overview = {
       const fails = [...st.tools].filter((t) => t.errors > 0).sort((a, b) => b.errors - a.errors).slice(0, 3);
       $("#ov-fails").innerHTML = fails.length ? fails.map((t) => `
         <div class="fail-row"><span class="fail-name">${esc(t.name)}</span><span class="mono">${t.calls - t.errors}</span><b class="mono">${t.errors}</b></div>`).join("")
-        : `<div class="hint"><span class="lang-zh">暂无失败</span><span class="lang-en">No failures</span></div>`;
+        : `<div class="fail-empty"><span class="lang-zh">暂无失败</span><span class="lang-en">No failures</span></div>`;
       // ---- 最近调用（滚动） ----
       const calls = ov.recentCalls || [];
       $("#ov-calls").innerHTML = calls.length ? calls.map((c) => `
