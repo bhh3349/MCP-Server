@@ -570,6 +570,7 @@ const Overview = {
           </div>
         </div>
         <div class="rel-foot"><span class="hint">成功 <b class="mono" id="ov-ok-total">–</b></span><span class="hint">失败 <b class="mono" id="ov-err-total">–</b></span></div>
+        <div class="call-list" id="ov-calls"><div class="hint">暂无调用</div></div>
         </div>
       </div>
     </div>`;
@@ -759,6 +760,14 @@ const Overview = {
         : `<div class="hint">暂无失败</div>`;
       $("#ov-ok-total").textContent = st.summary.totalCalls - st.summary.totalErrors;
       $("#ov-err-total").textContent = st.summary.totalErrors;
+      // ---- 最近调用（滚动） ----
+      const calls = ov.recentCalls || [];
+      $("#ov-calls").innerHTML = calls.length ? calls.map((c) => `
+        <div class="call-row"><span class="dot ${c.ok ? "ok" : "err"}"></span>
+          <span class="call-name">${esc(c.name)}</span>
+          <span class="call-ms">${c.ms}ms</span>
+          <span class="call-ts">${fmtTime(c.ts)}</span></div>`).join("")
+        : `<div class="hint">暂无调用</div>`;
       // ---- 错误徽章 ----
       $("#badge-errors").textContent = ov.errors.unacked || "";
       // ---- 日志（瘦：时间+级别+消息） ----
