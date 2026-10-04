@@ -51,7 +51,7 @@ GATEWAY_PORT=8080 PUBLIC_URL=wss://gw.example.com \
   bash -c "$(curl -sSL https://raw.githubusercontent.com/bhh3349/MCP-Server/main/scripts/quick_start.sh)"
 ```
 
-看到 `网关部署成功` 即完成。健康检查：`curl http://127.0.0.1:8080/healthz`。
+看到 `网关部署成功` 即完成。健康检查：`curl http://IP:8080/healthz`。
 重复运行本命令即升级。注意：仓库需为公开，curl 才能拉到脚本。
 
 ### 手动部署
@@ -71,7 +71,7 @@ GATEWAY_PUBLIC_URL=wss://gw.example.com \
   npm run gateway
 ```
 
-看到 `MCP 接入` / `AI 接入` 地址即成功。健康检查：`curl http://127.0.0.1:8080/healthz`。
+看到 `MCP 接入` / `AI 接入` 地址即成功。健康检查：`curl http://IP:8080/healthz`。
 
 以后升级只用 `git pull` 再重启，不用重新传文件。
 
