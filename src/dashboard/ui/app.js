@@ -68,19 +68,7 @@ async function gwDeployRun() {
   const custom = $("#gw-custom-cmd").value.trim();
   const command = custom || gwDeployCommand();
   localStorage.setItem("gwSsh", JSON.stringify({ host: $("#gw-ip").value.trim(), sshPort: $("#gw-sshport").value.trim(), username: $("#gw-user").value.trim() }));
-  const btn = $("#gw-deploy-btn");
-  btn.disabled = true;
-  try {
-    // defer 模式：只过审批，不启动 job；实际执行在弹出的 SSH 终端里交互进行
-    const r = await api("/api/ssh/run", { method: "POST", body: { ...cfg, command, defer: true } });
-    if (r.approvalRequired) {
-      const ap = await new Promise((resolve) => {
-        showApprovalModal(r.approvalId, "ssh 部署", { host: `${cfg.username}@${cfg.host}:${cfg.sshPort}`, command }, resolve, () => resolve(null));
-      });
-      if (!ap) { toast("已取消"); return; }
-    }
-  } catch (e) { toast(e.message, false); return; }
-  finally { btn.disabled = false; }
+  // 用户主动点的按钮，不走审批，直接弹终端执行
   openSshTerminal({ title: "一键部署", runCommand: command });
 }
 /** 内置 SSH 终端（xterm.js + WebSocket + ssh2 shell） */
