@@ -99,10 +99,14 @@ async function gwDeployRun() {
   const command = custom || gwDeployCommand();
   localStorage.setItem("gwSsh", JSON.stringify({ host: $("#gw-ip").value.trim(), sshPort: $("#gw-sshport").value.trim(), username: $("#gw-user").value.trim() }));
   // 用户主动点的按钮，不走审批，直接弹终端执行
-  openSshTerminal({ title: "<span class='lang-zh'>一键部署</span><span class='lang-en'>Deploy</span>", runCommand: command });
+  openSshTerminal({ title: termText("一键部署", "Deploy"), runCommand: command });
 }
 /** 内置 SSH 终端（xterm.js + WebSocket + ssh2 shell） */
 /** 内置 SSH 终端（xterm.js + WebSocket + ssh2 shell）；传 runCommand 则连上后自动执行（用于一键部署） */
+/** 终端纯文本（xterm 不支持 HTML，按当前语言取文本） */
+function termText(zh, en) {
+  return (document.documentElement.dataset.lang === "en" ? en : zh);
+}
 async function openSshTerminal(opts = {}) {
   const { title = "SSH <span class='lang-zh'>终端</span><span class='lang-en'>Terminal</span>", runCommand = "" } = opts;
   const cfg = readSshCfg();
@@ -157,7 +161,7 @@ async function openSshTerminal(opts = {}) {
   };
   $("#modal-overlay").addEventListener("click", onOverlay);
   window.addEventListener("resize", onResize);
-  term.write("<span class='lang-zh'>正在连接</span><span class='lang-en'>Connecting</span> SSH…\r\n");
+  term.write(termText("正在连接", "Connecting") + " SSH…\r\n");
   ws.onopen = () => { term.reset(); onResize(); };
   ws.onmessage = (ev) => {
     if (typeof ev.data === "string") {
@@ -180,18 +184,18 @@ async function openSshTerminal(opts = {}) {
           const cm = output.match(/mcp-gw:\/\/([^@\s]+)@([^\s:]+):(\d+)/);
           if (cm) {
             saveGateway(cm[1], cm[2], cm[3]);
-            term.write("\r\n\x1b[32m[<span class='lang-zh'>部署成功，网关信息已自动填入默认网关</span><span class='lang-en'>Deployed, set as default</span>]\x1b[0m\r\n");
+            term.write("\r\n\x1b[32m[" + termText("部署成功，网关信息已自动填入默认网关", "Deployed, set as default") + "]\x1b[0m\r\n");
           } else {
-            term.write("\r\n\x1b[32m[<span class='lang-zh'>部署成功</span><span class='lang-en'>Deployed</span>]\x1b[0m\r\n");
+            term.write("\r\n\x1b[32m[" + termText("部署成功", "Deployed") + "]\x1b[0m\r\n");
           }
         } else {
-          term.write(`\r\n\x1b[31m[<span class="lang-zh">部署失败</span><span class="lang-en">Deploy Failed</span>，exit=${dm[1]}]\x1b[0m\r\n`);
+          term.write(`\r\n\x1b[31m[${termText("部署失败", "Deploy Failed")}，exit=${dm[1]}]\x1b[0m\r\n`);
         }
       }
     }
   };
-  ws.onclose = () => term.write("\r\n\x1b[2m[<span class='lang-zh'>连接已断开</span><span class='lang-en'>Disconnected</span>]\x1b[0m\r\n");
-  ws.onerror = () => term.write("\r\n\x1b[31m[WebSocket <span class='lang-zh'>错误</span><span class='lang-en'>Errors</span>]\x1b[0m\r\n");
+  ws.onclose = () => term.write("\r\n\x1b[2m[" + termText("连接已断开", "Disconnected") + "]\x1b[0m\r\n");
+  ws.onerror = () => term.write("\r\n\x1b[31m[WebSocket " + termText("错误", "Error") + "]\x1b[0m\r\n");
   term.onData((d) => { if (ws.readyState === 1) ws.send(JSON.stringify({ t: "in", d })); });
   $("#ssh-close").addEventListener("click", () => { cleanup(); closeModal(); });
 }
