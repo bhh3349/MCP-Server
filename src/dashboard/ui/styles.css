@@ -244,6 +244,11 @@ html.tauri .win-controls { display: flex; }
 .cselect-list::-webkit-scrollbar { width: 6px; }
 .cselect-list::-webkit-scrollbar-thumb { background: rgba(127,127,140,.35); border-radius: 3px; }
 .cselect-opt { padding: 8px 10px; border-radius: 6px; font-size: 12.5px; cursor: pointer; color: var(--text2); white-space: nowrap; }
+/* 原生 select 深色样式 */
+select { appearance: none; -webkit-appearance: none; background: var(--panel2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center; border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 7px 28px 7px 11px; font-size: 12.5px; cursor: pointer; }
+select:hover { border-color: var(--accent); }
+select:focus { outline: none; border-color: var(--accent); }
+select option { background: var(--panel2); color: var(--text); }
 .cselect-opt:hover { background: rgba(255,255,255,.06); color: var(--text); }
 .cselect-opt.sel { color: var(--text); background: rgba(99,102,241,.16); font-weight: 700; }
 .set-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 2px; border-bottom: 1px solid rgba(255,255,255,.05); }
