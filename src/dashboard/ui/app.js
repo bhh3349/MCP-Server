@@ -618,7 +618,6 @@ const Overview = {
               <div class="donut-label"><b id="ov-rate">–</b><span><span class="lang-zh">成功率</span><span class="lang-en">Success</span></span></div>
             </div>
             <div class="rel-fails">
-              <div class="fail-title"><span class="lang-zh">失败最多</span><span class="lang-en">Top Failures</span></div>
               <div class="fail-head"><span><span class="lang-zh">工具名</span><span class="lang-en">Tool</span></span><span><span class="lang-zh">成功</span><span class="lang-en">OK</span></span><span><span class="lang-zh">失败</span><span class="lang-en">Fail</span></span></div>
               <div id="ov-fails"></div>
             </div>
