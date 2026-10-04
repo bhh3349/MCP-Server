@@ -281,7 +281,7 @@ function dotFor(ch) {
 }
 
 /* ---------- 路由 ---------- */
-const PAGE_TITLES = { overview: "概览", channels: "信道", extensions: "扩展", tools: "工具", logs: "日志", errors: "错误" };
+const PAGE_TITLES = { overview: "概览", channels: "信道", plugins: "插件", skills: "技能", connectors: "连接器", tools: "工具", logs: "日志", errors: "错误" };
 let currentPage = "overview";
 const pageInited = {};
 function navTo(page) {
@@ -891,54 +891,105 @@ const ChannelsPage = {
 };
 
 /* ================= 网关 ================= */
-/* ================= 扩展 ================= */
-const ExtensionsPage = {
-  html() { return `<div class="sec-head"><div class="sec-title">扩展</div></div><div id="ext-wrap"></div>`; },
-  init() { $("#page-extensions").innerHTML = this.html(); },
-  async show() {
-    const exts = await api("/api/extensions").catch(() => []);
-    $("#badge-ext").textContent = exts.length || "";
-    const groups = { plugin: "插件 Plugins", skill: "技能 Skills", connector: "连接器 Connectors" };
-    $("#ext-wrap").innerHTML = Object.entries(groups).map(([kind, title]) => {
+/* ================= 插件 / 技能 / 连接器 ================= */
+// 插件：第三方工具包 —— 突出它提供了哪些工具
+function pluginCard(e) {
+  return `
+  <div class="ext-card card" style="background:var(--bg)">
+    <div class="ext-head"><span class="ext-name">${esc(e.name)}</span>
+      <span class="hint mono" style="margin-left:8px">v${esc(e.version || "")}</span>
+      <span class="pill ${e.enabled ? "green" : "gray"}" style="margin-left:auto">${e.enabled ? "已启用" : "已禁用"}</span></div>
+    <div class="ext-desc">${esc(e.description || "暂无描述")}</div>
+    <div class="inner-box" style="margin-top:10px">
+      <div class="inner-title">提供工具 · ${e.toolNames.length}</div>
+      <div class="tool-tags">${e.toolNames.map((t) => `<span class="tag mono">${esc(t)}</span>`).join("") || '<span class="hint">无</span>'}</div>
+    </div>
+    <div class="ext-foot" style="margin-top:10px">
+      <span></span>
+      ${e.enabled ? `<label class="switch" title="禁用"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint">重启恢复</span>`}
+    </div>
+  </div>`;
+}
+
+// 技能：能力说明包 —— 突出它的用途和资源
+function skillCard(e) {
+  return `
+  <div class="ext-card card" style="background:var(--bg)">
+    <div class="ext-head"><span class="ext-name">${esc(e.name)}</span>
+      <span class="hint mono" style="margin-left:8px">v${esc(e.version || "")}</span>
+      <span class="pill ${e.enabled ? "green" : "gray"}" style="margin-left:auto">${e.enabled ? "已启用" : "已禁用"}</span></div>
+    <div class="ext-desc">${esc(e.description || "暂无描述")}</div>
+    ${e.resourceUris?.length ? `<div class="inner-box" style="margin-top:10px">
+      <div class="inner-title">技能资源</div>
+      <div class="mono" style="font-size:11px;color:var(--text2)">${e.resourceUris.map(esc).join("<br>")}</div>
+    </div>` : ""}
+    <div class="ext-foot" style="margin-top:10px">
+      <span class="hint">AI 会话中按需调用</span>
+      ${e.enabled ? `<label class="switch" title="禁用"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint">重启恢复</span>`}
+    </div>
+  </div>`;
+}
+
+// 连接器：外部服务集成 —— 突出连接状态和配置
+function connectorCard(e) {
+  const configured = e.name !== "github" || e.hasConfig;
+  return `
+  <div class="ext-card card" style="background:var(--bg)">
+    <div class="ext-head"><span class="ext-name">${esc(e.name)}</span>
+      <span class="dot ${e.enabled && configured ? "green" : "yellow"}" style="margin-left:8px"></span>
+      <span class="hint" style="margin-left:4px">${e.enabled ? (configured ? "已连接" : "待配置") : "已禁用"}</span>
+      <span class="pill ${e.enabled ? "green" : "gray"}" style="margin-left:auto">${e.enabled ? "已启用" : "已禁用"}</span></div>
+    <div class="ext-desc">${esc(e.description || "暂无描述")}</div>
+    ${e.toolNames?.length ? `<div class="ext-tools" style="margin-top:8px">${e.toolNames.map(esc).join(" · ")}</div>` : ""}
+    <div class="ext-foot" style="margin-top:10px">
+      ${e.name === "github" ? `<button class="btn sm ghost" data-cfg="${esc(e.name)}">配置 Token</button>` : `<span></span>`}
+      ${e.enabled ? `<label class="switch" title="禁用"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint">重启恢复</span>`}
+    </div>
+  </div>`;
+}
+
+function makeExtPage(kind, title, pageId, badgeId, cardFn) {
+  return {
+    async show() {
+      const wrap = $(`#${pageId}`);
+      wrap.innerHTML = `<div class="sec-head"><div class="sec-title">${title}</div></div><div id="${pageId}-wrap"></div>`;
+      const exts = await api("/api/extensions").catch(() => []);
       const items = exts.filter((e) => e.kind === kind);
-      return `<div class="card" style="margin-bottom:12px"><div class="card-title">${title} <span class="hint">${items.length}</span></div>
-        ${items.length ? `<div class="ext-grid">` + items.map((e) => `
-          <div class="ext-card card" style="background:var(--bg)">
-            <div class="ext-head"><span class="ext-name">${esc(e.name)}</span>
-              <span class="pill ${e.enabled ? "green" : "gray"}" style="margin-left:auto">${e.enabled ? "已启用" : "已禁用"}</span></div>
-            <div class="ext-desc">${esc(e.description || "暂无描述")}</div>
-            <div class="ext-tools">${e.toolNames.map(esc).join(" · ") || e.version || ""}</div>
-            <div class="ext-foot">
-              ${e.name === "github" ? `<button class="btn sm ghost" data-cfg="${esc(e.name)}">配置 Token</button>` : `<span></span>`}
-              ${e.enabled ? `<label class="switch" title="禁用"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint">重启恢复</span>`}
-            </div>
-          </div>`).join("") + `</div>`
-        : `<div class="hint">暂无${title}</div>`}</div>`;
-    }).join("");
-    $$("#ext-wrap [data-dis]").forEach((sw) => sw.addEventListener("change", async () => {
-      const r = await api(`/api/extensions/${encodeURIComponent(sw.dataset.dis)}/disable`, { method: "POST" }).catch((e) => toast(e.message, false));
-      if (r?.ok) { toast("已禁用，重启 dashboard 恢复"); this.show(); }
-      else sw.checked = true;
-    }));
-    $$("#ext-wrap [data-cfg]").forEach((b) => b.addEventListener("click", () => this.openConfig(b.dataset.cfg)));
-  },
-  openConfig(name) {
-    openModal(`<div class="modal-title">配置 ${esc(name)}</div>
-      <div class="field"><label>GitHub Personal Access Token</label>
-        <input id="cfg-token" type="password" placeholder="ghp_... / github_pat_...">
-        <div class="hint" style="margin-top:6px">只写入本机 extensions/connectors/github/config.json，不会上传</div></div>
-      <div class="modal-actions"><button class="btn ghost" id="m-cancel">取消</button><button class="btn" id="m-ok">保存</button></div>`);
-    $("#m-cancel").addEventListener("click", closeModal);
-    $("#m-ok").addEventListener("click", async () => {
-      const token = $("#cfg-token").value.trim();
-      if (!token) { toast("Token 不能为空", false); return; }
-      try {
-        await api(`/api/extensions/${encodeURIComponent(name)}/config`, { method: "POST", body: { token } });
-        toast("Token 已保存，重启 dashboard 后生效"); closeModal();
-      } catch (e) { toast(e.message, false); }
-    });
-  },
-};
+      const badge = $(`#${badgeId}`);
+      if (badge) badge.textContent = items.length || "";
+      $(`#${pageId}-wrap`).innerHTML = items.length
+        ? `<div class="ext-grid">` + items.map(cardFn).join("") + `</div>`
+        : `<div class="card"><div class="hint" style="padding:24px;text-align:center">暂无${title}</div></div>`;
+      $$(`#${pageId}-wrap [data-dis]`).forEach((sw) => sw.addEventListener("change", async () => {
+        const r = await api(`/api/extensions/${encodeURIComponent(sw.dataset.dis)}/disable`, { method: "POST" }).catch((e) => toast(e.message, false));
+        if (r?.ok) { toast("已禁用，重启 dashboard 恢复"); this.show(); }
+        else sw.checked = true;
+      }));
+      $$(`#${pageId}-wrap [data-cfg]`).forEach((b) => b.addEventListener("click", () => openExtConfig(b.dataset.cfg)));
+    },
+  };
+}
+
+function openExtConfig(name) {
+  openModal(`<div class="modal-title">配置 ${esc(name)}</div>
+    <div class="field"><label>GitHub Personal Access Token</label>
+      <input id="cfg-token" type="password" placeholder="ghp_... / github_pat_...">
+      <div class="hint" style="margin-top:6px">只写入本机 extensions/connectors/github/config.json，不会上传</div></div>
+    <div class="modal-actions"><button class="btn ghost" id="m-cancel">取消</button><button class="btn" id="m-ok">保存</button></div>`);
+  $("#m-cancel").addEventListener("click", closeModal);
+  $("#m-ok").addEventListener("click", async () => {
+    const token = $("#cfg-token").value.trim();
+    if (!token) { toast("Token 不能为空", false); return; }
+    try {
+      await api(`/api/extensions/${encodeURIComponent(name)}/config`, { method: "POST", body: { token } });
+      toast("Token 已保存，重启 dashboard 后生效"); closeModal();
+    } catch (e) { toast(e.message, false); }
+  });
+}
+
+const PluginsPage = makeExtPage("plugin", "插件", "page-plugins", "badge-plugins", pluginCard);
+const SkillsPage = makeExtPage("skill", "技能", "page-skills", "badge-skills", skillCard);
+const ConnectorsPage = makeExtPage("connector", "连接器", "page-connectors", "badge-connectors", connectorCard);
 
 /* ================= 工具 ================= */
 const ToolsPage = {
@@ -1470,7 +1521,8 @@ $("#settings-btn").addEventListener("click", () => SettingsModal.open());
 /* ================= 启动 ================= */
 const PAGES = {
   overview: Overview, channels: ChannelsPage,
-  extensions: ExtensionsPage, tools: ToolsPage, logs: LogsPage, errors: ErrorsPage,
+  plugins: PluginsPage, skills: SkillsPage, connectors: ConnectorsPage,
+  tools: ToolsPage, logs: LogsPage, errors: ErrorsPage,
 };
 
 (async function boot() {
