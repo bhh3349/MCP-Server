@@ -176,6 +176,16 @@ export class ChannelManager {
       if (!rec?.gwSession) return;
       rec.stats.requestsIn++;
       if (rec.ai) rec.ai.lastActiveAt = Date.now();
+      // 抓 MCP initialize 里的 clientInfo 做 AI 身份识别（协议自带，不额外要求）
+      try {
+        const msg = JSON.parse(data) as { method?: string; params?: { clientInfo?: { name?: string } } };
+        const ciName = msg?.method === "initialize" ? msg.params?.clientInfo?.name : undefined;
+        if (ciName && rec.ai && rec.ai.name !== ciName) {
+          rec.ai.name = ciName;
+        } else if (ciName && !rec.ai) {
+          this.onAIJoined(channelId, { id: `gw-${channelId}`, name: ciName, capabilities: [] });
+        }
+      } catch { /* 非 JSON 忽略 */ }
       void rec.gwSession.onData(data).catch(() => {
         rec.stats.errors++;
       });
