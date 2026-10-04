@@ -649,17 +649,9 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
       password: z.string().min(1),
     });
     if (method === "POST" && path === "/api/ssh/run") {
-      const body = SshCfgSchema.extend({
-        command: z.string().min(1).max(8000),
-        // defer=true：只过审批，不实际启动 job（前端用交互终端执行）
-        defer: z.boolean().default(false),
-      }).parse(await readJsonBody(req));
+      const body = SshCfgSchema.extend({ command: z.string().min(1).max(8000) }).parse(await readJsonBody(req));
       const cfg: SshConfig = { host: body.host, port: body.sshPort, username: body.username, password: body.password };
       const start = () => {
-        if (body.defer) {
-          logStore.add({ level: "info", source: "dashboard", text: `SSH 部署已批准（终端模式）${body.username}@${body.host}` });
-          return { result: { deferred: true } };
-        }
         const jobId = sshRunJob(cfg, body.command);
         logStore.add({ level: "info", source: "dashboard", text: `SSH 任务已启动 ${body.username}@${body.host}` });
         return { result: { jobId } };
@@ -675,7 +667,7 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
         return json(res, { approvalRequired: true, approvalId: ap.id });
       }
       const r = start();
-      return json(res, r.result as { jobId?: string; deferred?: boolean });
+      return json(res, { jobId: (r.result as { jobId: string }).jobId });
     }
     const sshJobMatch = path.match(/^\/api\/ssh\/jobs\/([^/]+)$/);
     if (method === "GET" && sshJobMatch?.[1]) {
