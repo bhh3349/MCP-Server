@@ -524,7 +524,10 @@ const Overview = {
           <div class="chat-avatar">🤖</div>
           <div><div class="tp-title">监控助手</div><div class="chat-sub"><span class="dot green pulse"></span><span id="chat-status">在线</span></div></div>
         </div>
-        <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="inner-box">
+          <div class="inner-title">对话</div>
+          <div class="chat-msgs" id="chat-msgs"></div>
+        </div>
         <div class="chat-chips" id="chat-chips">
           <button class="chip" data-q="现在 MCP 健康吗？">健康检查</button>
           <button class="chip" data-q="哪个工具报错最多？">错误排行</button>
@@ -538,6 +541,8 @@ const Overview = {
       <div class="card rel-card">
         <div class="ov-eyebrow">RELIABILITY</div>
         <div class="tp-head"><span class="tp-title">调用成功率</span><span class="hint mono">60 SEC</span></div>
+        <div class="inner-box">
+          <div class="inner-title">成功率</div>
         <div class="donut-wrap">
           <div class="donut-center">
             <svg viewBox="0 0 120 120" width="96" height="96">
@@ -554,6 +559,7 @@ const Overview = {
           </div>
         </div>
         <div class="rel-foot"><span class="hint">成功 <b class="mono" id="ov-ok-total">–</b></span><span class="hint">失败 <b class="mono" id="ov-err-total">–</b></span></div>
+        </div>
       </div>
     </div>`;
   },
