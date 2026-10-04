@@ -275,6 +275,7 @@ function esc(s) {
 }
 function dotFor(ch) {
   if (ch.liveness === "closed" || ch.liveness === "mcp_lost") return "red";
+  if (ch.kind === "local") return "green";
   if (ch.paired) return "green";
   return "yellow";
 }
@@ -773,7 +774,7 @@ const ChannelsPage = {
       <tr><td><span class="dot ${dotFor(c)}"></span></td>
         <td><b>${esc(c.name)}</b><div class="hint mono" style="font-size:10.5px">${esc(c.bindingId)}</div></td>
         <td>${c.kind === "local" ? '<span class="pill gray">本地</span>' : '<span class="pill purple">网关</span>'}</td>
-        <td>${c.paired ? '<span class="pill green">已配对</span>' : '<span class="pill yellow">等待配对</span>'}</td>
+        <td>${c.kind === "local" ? '<span class="pill green">运行中</span>' : (c.paired ? '<span class="pill green">已配对</span>' : '<span class="pill yellow">等待配对</span>')}</td>
         <td class="mono">${c.latencyMs != null ? c.latencyMs + " ms" : "–"}</td>
         <td>${c.ai ? esc(c.ai.name) : '<span class="hint">–</span>'}</td>
         <td class="mono">${c.stats.requestsIn}</td>
