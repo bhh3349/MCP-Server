@@ -610,6 +610,7 @@ const Overview = {
 
   init() {
     $("#page-overview").innerHTML = this.html();
+    applyLang(); // 新渲染的 placeholder 需要应用语言
     $("#ov-br-switch").addEventListener("change", async (e) => {
       try {
         const r = await api("/api/bridge", { method: "POST", body: { on: e.target.checked } });
