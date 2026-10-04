@@ -626,6 +626,46 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
       return json(res, { ok: true });
     }
 
+    // 安装扩展：POST /api/extensions/install { kind, name, version?, description?, files: [{ filename, content(base64) }] }
+    if (method === "POST" && path === "/api/extensions/install") {
+      const body = z.object({
+        kind: z.enum(["plugin", "skill", "connector"]),
+        name: z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
+        version: z.string().max(32).default("0.1.0"),
+        description: z.string().max(500).default(""),
+        files: z.array(z.object({ filename: z.string().max(128), content: z.string() })).min(1).max(20),
+      }).parse(await readJsonBody(req));
+      const { mkdir, writeFile, access } = await import("node:fs/promises");
+      const kindDir = { plugin: "plugins", skill: "skills", connector: "connectors" }[body.kind];
+      const targetDir = join(process.cwd(), "extensions", kindDir, body.name);
+      // 防路径穿越
+      if (!targetDir.startsWith(join(process.cwd(), "extensions"))) {
+        return json(res, { error: "invalid name" }, 400);
+      }
+      try { await access(targetDir); return json(res, { error: "已存在同名扩展" }, 409); }
+      catch { /* 不存在，继续 */ }
+      await mkdir(targetDir, { recursive: true });
+      for (const f of body.files) {
+        const safeName = f.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+        if (!safeName || safeName === "." || safeName === "..") continue;
+        const buf = Buffer.from(f.content, "base64");
+        if (buf.length > 5 * 1024 * 1024) return json(res, { error: `文件过大: ${safeName}` }, 400);
+        await writeFile(join(targetDir, safeName), buf);
+      }
+      // 插件/连接器自动生成 manifest.json（如果没上传）
+      if (body.kind !== "skill") {
+        try { await access(join(targetDir, "manifest.json")); }
+        catch {
+          await writeFile(join(targetDir, "manifest.json"), JSON.stringify({
+            name: body.name, version: body.version, description: body.description,
+            entry: "index.js",
+          }, null, 2), "utf-8");
+        }
+      }
+      logStore.add({ level: "info", source: "dashboard", text: `已安装${body.kind}: ${body.name}，重启后生效` });
+      return json(res, { ok: true, name: body.name });
+    }
+
     if (method === "POST" && path === "/api/tools/call") {
       const body = z.object({ name: z.string(), args: z.unknown().default({}) }).parse(await readJsonBody(req));
       if (disabledTools.has(body.name)) return json(res, { error: `工具已被隔离: ${body.name}` }, 403);
