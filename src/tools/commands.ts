@@ -1,11 +1,13 @@
 /**
  * 内置命令执行：编码安全的 shell。
  *
+ * Windows 上只用 Git Bash（bash.exe -c），不用 PowerShell；
+ * 找不到 Git Bash 时直接报错（不静默回退）。
+ *
  * 解决的坑（见测试报告 C-04/C-05/C-06）：
  * 1. GBK 控制台吃中文 —— 不走控制台：Node 直接 spawn 子进程，stdio 全管道，
- *    PowerShell 侧强制 [Console]::OutputEncoding = UTF-8，Node 侧按 UTF-8 解码。
- * 2. 引号地狱 —— Windows 下用 -EncodedCommand（base64 UTF-16LE）传脚本，
- *    彻底绕过 PowerShell 5.1 的命令行引号解析。
+ *    bash 侧 UTF-8，Node 侧按 UTF-8 解码。
+ * 2. 引号地狱 —— 命令经 spawn argv 原样送达 bash -c，不再被 PowerShell 命令行解析剥掉。
  * 3. stdout/stderr 合并 —— 分开捕获、分开返回。
  *
  * 回执统一形状（测试报告 P1）：{ jobId?, status, done, killed,
@@ -14,6 +16,7 @@
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { z } from "zod";
+import { resolveShell } from "./shell.js";
 
 export interface JobRecord {
   proc: ChildProcess;
@@ -31,29 +34,6 @@ export interface JobRecord {
 
 const jobs = new Map<string, JobRecord>();
 let seq = 0;
-
-function isWin(): boolean {
-  return process.platform === "win32";
-}
-
-/**
- * 构建 Windows 执行参数：
- * - 脚本包一层 UTF-8 编码声明后转 base64(UTF-16LE)，走 -EncodedCommand，
- *   引号/中文/特殊字符原样送达，不再被 PowerShell 命令行解析剥掉。
- */
-function winArgs(command: string): string[] {
-  const prelude =
-    "[Console]::OutputEncoding=[Text.UTF8Encoding]::new();" +
-    "$OutputEncoding=[Text.UTF8Encoding]::new();" +
-    "$ProgressPreference='SilentlyContinue';";
-  const full = prelude + command;
-  const b64 = Buffer.from(full, "utf16le").toString("base64");
-  return ["-NoProfile", "-NonInteractive", "-EncodedCommand", b64];
-}
-
-function posixArgs(command: string): string[] {
-  return ["-c", command];
-}
 
 function decode(buf: Buffer[]): string {
   return Buffer.concat(buf).toString("utf-8");
@@ -140,11 +120,10 @@ export async function exec(
 ): Promise<JobResult> {
   const { command, cwd, timeoutMs, background, maxOutputChars } = ExecInput.parse(args);
   const id = `job-${++seq}-${Date.now().toString(36)}`;
-  const shell = isWin() ? "powershell.exe" : "/bin/sh";
-  const shellArgs = isWin() ? winArgs(command) : posixArgs(command);
+  const { shell, args: shellArgs } = resolveShell();
 
   const startedAt = Date.now();
-  const proc = spawn(shell, shellArgs, {
+  const proc = spawn(shell, shellArgs(command), {
     cwd,
     timeout: background ? 0 : timeoutMs,
     windowsHide: true,
