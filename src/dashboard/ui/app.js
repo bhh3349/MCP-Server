@@ -963,7 +963,7 @@ function pluginCard(e) {
     </div>
     <div class="ext-foot" style="margin-top:10px">
       <button class="btn sm ghost danger" data-uninstall="${esc(e.name)}"><span class='lang-zh'>卸载</span><span class='lang-en'>Uninstall</span></button>
-      ${e.enabled ? `<label class="switch" title="<span class="lang-zh">禁用</span><span class="lang-en">Disable</span>"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint"><span class="lang-zh">重启恢复</span><span class="lang-en">Restored on restart</span></span>`}
+      ${e.enabled ? `<label class="switch" title="Disable"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint"><span class="lang-zh">重启恢复</span><span class="lang-en">Restored on restart</span></span>`}
     </div>
   </div>`;
 }
@@ -984,7 +984,7 @@ function skillCard(e) {
       <span class="hint">AI <span class="lang-zh">会话中按需调用</span><span class="lang-en">On-demand</span></span>
       <span style="display:flex;gap:8px;align-items:center">
         <button class="btn sm ghost danger" data-uninstall="${esc(e.name)}"><span class='lang-zh'>卸载</span><span class='lang-en'>Uninstall</span></button>
-        ${e.enabled ? `<label class="switch" title="<span class="lang-zh">禁用</span><span class="lang-en">Disable</span>"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint"><span class="lang-zh">重启恢复</span><span class="lang-en">Restored on restart</span></span>`}
+        ${e.enabled ? `<label class="switch" title="Disable"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint"><span class="lang-zh">重启恢复</span><span class="lang-en">Restored on restart</span></span>`}
       </span>
     </div>
   </div>`;
@@ -1006,7 +1006,7 @@ function connectorCard(e) {
         ${e.name === "github" ? `<button class="btn sm ghost" data-cfg="${esc(e.name)}"><span class='lang-zh'>配置 Token</span><span class='lang-en'>Set Token</span></button>` : ``}
         <button class="btn sm ghost danger" data-uninstall="${esc(e.name)}"><span class='lang-zh'>卸载</span><span class='lang-en'>Uninstall</span></button>
       </span>
-      ${e.enabled ? `<label class="switch" title="<span class="lang-zh">禁用</span><span class="lang-en">Disable</span>"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint"><span class="lang-zh">重启恢复</span><span class="lang-en">Restored on restart</span></span>`}
+      ${e.enabled ? `<label class="switch" title="Disable"><input type="checkbox" checked data-dis="${esc(e.name)}"><span class="track"></span></label>` : `<span class="hint"><span class="lang-zh">重启恢复</span><span class="lang-en">Restored on restart</span></span>`}
     </div>
   </div>`;
 }
@@ -1134,7 +1134,7 @@ const ToolsPage = {
         <div class="t-desc">${esc(t.description || "")}</div>
         <div class="tool-meta"><span class="pill ${this.danger(t.name) ? "red" : "gray"}">${this.danger(t.name) ? "<span class='lang-zh'>危险</span><span class='lang-en'>Risky</span>" : "<span class='lang-zh'>安全</span><span class='lang-en'>Safe</span>"}</span>
         <span class="tool-calls">${s ? `${s.calls} <span class="lang-zh">次调用</span><span class="lang-en">calls</span>` : "<span class='lang-zh'>未调用</span><span class='lang-en'>Unused</span>"}</span>
-        <label class="switch sm" title="${dis ? '<span class="lang-zh">启用</span><span class="lang-en">Enable</span>' : '<span class="lang-zh">禁用</span><span class="lang-en">Disable</span>'}" data-stop><input type="checkbox"${dis ? "" : " checked"} data-tool-toggle="${esc(t.name)}"><span class="track"></span></label></div></div>`;
+        <label class="switch sm" title="${dis ? 'Enable' : 'Disable'}" data-stop><input type="checkbox"${dis ? "" : " checked"} data-tool-toggle="${esc(t.name)}"><span class="track"></span></label></div></div>`;
     }).join("");
     $$("#tool-grid .tool-card").forEach((c) =>
       c.addEventListener("click", (e) => {
