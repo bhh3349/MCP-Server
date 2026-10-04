@@ -116,7 +116,8 @@ input, select, textarea { font-family: inherit; }
   font-family: var(--font-m);
 }
 .nav-badge.red { background: rgba(248,113,113,.16); color: var(--red); padding: 1px 7px; border-radius: 20px; }
-.side-foot { padding: 10px; }
+.side-foot { padding: 8px 10px; display: flex; flex-direction: column; }
+.side-foot .nav-item { width: 100%; }
 .srv-card {
   display: flex; align-items: center; gap: 9px; padding: 9px 10px;
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
