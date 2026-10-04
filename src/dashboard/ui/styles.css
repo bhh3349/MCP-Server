@@ -419,6 +419,15 @@ input, select, textarea { font-family: inherit; }
 .fail-row b { color: var(--red); }
 .rel-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.05); }
 .rel-foot b { color: var(--text); }
+/* 最近调用滚动列表 */
+.call-list { flex: 1; min-height: 60px; max-height: 150px; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+.call-row { display: flex; align-items: center; gap: 8px; font-family: var(--font-m); font-size: 11px; color: var(--text2); padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,.02); }
+.call-row .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.call-row .dot.ok { background: var(--green); box-shadow: 0 0 6px rgba(52,211,153,.6); }
+.call-row .dot.err { background: var(--red); box-shadow: 0 0 6px rgba(248,113,113,.6); }
+.call-row .call-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.call-row .call-ms { color: var(--text3); }
+.call-row .call-ts { color: var(--text3); }
 .stat-card { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
 .stat-card.hero {
   background: linear-gradient(135deg, rgba(99,102,241,.28) 0%, rgba(139,92,246,.1) 55%, rgba(139,92,246,.04) 100%);
