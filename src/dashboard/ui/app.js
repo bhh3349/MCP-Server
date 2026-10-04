@@ -34,6 +34,8 @@ function applyLang() {
     if (!el.dataset.optZh) el.dataset.optZh = el.textContent || "";
     el.textContent = l === "en" ? (el.dataset.optEn || "") : (el.dataset.optZh || "");
   });
+  // Swap custom select labels
+  document.querySelectorAll(".cselect").forEach((el) => el._setLang?.(l));
   // Update document title
   document.title = l === "en" ? "MCP-Server Console" : "MCP-Server 控制中心";
   return l;
@@ -270,6 +272,16 @@ function initCSelect(id, { value, options, onChange }) {
   setVal(value, false);
   root._setVal = (v) => setVal(v, false);
   root._getVal = () => root.dataset.value;
+  root._setLang = (l) => {
+    options.forEach((o, i) => {
+      const newLabel = l === "en" ? (o.en || o.label) : (o.zh || o.label);
+      o.label = newLabel;
+      const el = list.querySelectorAll(".cselect-opt")[i];
+      if (el) el.textContent = newLabel;
+    });
+    const cur = options.find((o) => o.value === root.dataset.value);
+    if (cur) valEl.textContent = cur.label;
+  };
   return root;
 }
 function closeAllCSelect(except) {
@@ -1258,21 +1270,38 @@ const ErrorsPage = {
   html() {
     return `<div class="sec-head"><div class="sec-title"><span class="lang-zh">错误收集</span><span class="lang-en">Errors</span></div>
       <div class="log-toolbar">
-        <select id="err-src"><option value="" data-opt-en="All">全部来源</option><option value="tool:" data-opt-en="Tools">工具</option><option value="gateway" data-opt-en="Gateway">网关</option><option value="channel:" data-opt-en="Channels">信道</option><option value="dashboard" data-opt-en="Panel">面板</option></select>
-        <select id="err-acked"><option value="" data-opt-en="All">全部状态</option><option value="false" data-opt-en="Pending">未处理</option><option value="true" data-opt-en="Done">已处理</option></select>
+        <div class="cselect" id="err-src"></div>
+        <div class="cselect" id="err-acked"></div>
       </div></div>
     <div class="err-stats" id="err-stats"></div>
     <div class="card"><div id="err-list"></div></div>`;
   },
   init() {
     $("#page-errors").innerHTML = this.html();
-    $("#err-src").addEventListener("change", () => this.show());
-    $("#err-acked").addEventListener("change", () => this.show());
+    const lang = document.documentElement.dataset.lang || "zh";
+    initCSelect("err-src", {
+      value: "", onChange: () => this.show(),
+      options: [
+        { value: "", zh: "全部来源", en: "All" },
+        { value: "tool:", zh: "工具", en: "Tools" },
+        { value: "gateway", zh: "网关", en: "Gateway" },
+        { value: "channel:", zh: "信道", en: "Channels" },
+        { value: "dashboard", zh: "面板", en: "Panel" },
+      ].map((o) => ({ value: o.value, label: lang === "en" ? o.en : o.zh, zh: o.zh, en: o.en })),
+    });
+    initCSelect("err-acked", {
+      value: "", onChange: () => this.show(),
+      options: [
+        { value: "", zh: "全部状态", en: "All" },
+        { value: "false", zh: "未处理", en: "Pending" },
+        { value: "true", zh: "已处理", en: "Done" },
+      ].map((o) => ({ value: o.value, label: lang === "en" ? o.en : o.zh, zh: o.zh, en: o.en })),
+    });
   },
   start() { this.stop(); this.show(); this.timer = setInterval(() => this.show(true), 5000); },
   stop() { if (this.timer) { clearInterval(this.timer); this.timer = null; } },
   async show(quiet) {
-    const src = $("#err-src")?.value || "", acked = $("#err-acked")?.value || "";
+    const src = $("#err-src")?._getVal() || "", acked = $("#err-acked")?._getVal() || "";
     const d = await api(`/api/errors?limit=200${src ? `&source=${encodeURIComponent(src)}` : ""}${acked ? `&acked=${acked}` : ""}`).catch(() => null);
     if (!d) return;
     const un = d.stats.unacked;
