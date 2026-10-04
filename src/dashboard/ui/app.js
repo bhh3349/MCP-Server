@@ -565,9 +565,9 @@ const Overview = {
           <div class="chat-msgs" id="chat-msgs"></div>
         </div>
         <div class="chat-chips" id="chat-chips">
-          <button class="chip" data-q="<span class="lang-zh">现在</span><span class="lang-en">Is it</span> MCP <span class="lang-zh">健康吗</span><span class="lang-en">healthy</span>？"><span class='lang-zh'>健康检查</span><span class='lang-en'>Health</span></button>
-          <button class="chip" data-q="<span class="lang-zh">哪个工具报错最多</span><span class="lang-en">Top error tool</span>？"><span class='lang-zh'>错误排行</span><span class='lang-en'>Errors</span></button>
-          <button class="chip" data-q="<span class="lang-zh">最近有什么错误</span><span class="lang-en">Recent errors</span>？"><span class='lang-zh'>最新错误</span><span class='lang-en'>Latest</span></button>
+          <button class="chip" data-q="现在 MCP 健康吗？"><span class='lang-zh'>健康检查</span><span class='lang-en'>Health</span></button>
+          <button class="chip" data-q="哪个工具报错最多？"><span class='lang-zh'>错误排行</span><span class='lang-en'>Errors</span></button>
+          <button class="chip" data-q="最近有什么错误？"><span class='lang-zh'>最新错误</span><span class='lang-en'>Latest</span></button>
         </div>
         <div class="chat-input-row">
           <input id="chat-input" placeholder="问问 MCP 状态…" data-ph-en="Ask MCP Status…" maxlength="500">
@@ -662,7 +662,7 @@ const Overview = {
       chatMsgs.scrollTop = chatMsgs.scrollHeight;
       return d;
     };
-    addMsg("sys", "我是 MCP <span class='lang-zh'>监控助手</span><span class='lang-en'>Assistant</span>，可以查<span class='lang-zh'>状态</span><span class='lang-en'>Status</span>、看<span class='lang-zh'>错误</span><span class='lang-en'>Errors</span>、隔离故障<span class='lang-zh'>工具</span><span class='lang-en'>Tools</span>、调<span class='lang-zh'>参数</span><span class='lang-en'>Params</span>。");
+    addMsg("sys", "<span class='lang-zh'>我是 MCP 监控助手，可以查状态、看错误、隔离故障工具、调参数。</span><span class='lang-en'>I'm MCP Assistant. Check status, view errors, isolate faulty tools, tune params.</span>");
     const sendChat = async (preset) => {
       const text = (preset ?? chatInput.value).trim();
       if (!text) return;
@@ -758,10 +758,10 @@ const Overview = {
         if (bc) bc.textContent = counts.connector || "";
       }).catch(() => {});
       $("#ov-ch-list").innerHTML = chs.length ? chs.map((c) => {
-        const desc = c.ai?.name || (c.kind === "local" ? "<span class='lang-zh'>本地直连</span><span class='lang-en'>Direct</span>" : c.kind === "gateway" ? "<span class='lang-zh'>网关订阅</span><span class='lang-en'>Subscribed</span>" : c.kind);
+        const desc = c.ai?.name ? esc(c.ai.name) : (c.kind === "local" ? "<span class='lang-zh'>本地直连</span><span class='lang-en'>Direct</span>" : c.kind === "gateway" ? "<span class='lang-zh'>网关订阅</span><span class='lang-en'>Subscribed</span>" : esc(c.kind));
         return `<div class="ch-row"><span class="dot ${dotFor(c)}"></span>
           <span class="ch-name">${esc(c.name)}</span>
-          <span class="ch-proj">${esc(desc)}</span></div>`;
+          <span class="ch-proj">${desc}</span></div>`;
       }).join("") : `<div class="ch-empty"><span class="lang-zh">暂无信道，点击右上角添加</span><span class="lang-en">No channels, click Add</span></div>`;
       // ---- 吞吐 ----
       const now = Date.now(), total = st.summary.totalCalls;
@@ -955,7 +955,7 @@ function pluginCard(e) {
     <div class="ext-head"><span class="ext-name">${esc(e.name)}</span>
       <span class="hint mono" style="margin-left:8px">v${esc(e.version || "")}</span>
       <span class="pill ${e.enabled ? "green" : "gray"}" style="margin-left:auto">${e.enabled ? "<span class='lang-zh'>已启用</span><span class='lang-en'>Enabled</span>" : "<span class='lang-zh'>已禁用</span><span class='lang-en'>Disabled</span>"}</span></div>
-    <div class="ext-desc">${esc(e.description || "<span class='lang-zh'>暂无描述</span><span class='lang-en'>No description</span>")}</div>
+    <div class="ext-desc">${(e.description ? esc(e.description) : "<span class='lang-zh'>暂无描述</span><span class='lang-en'>No description</span>")}</div>
     <div class="inner-box" style="margin-top:10px">
       <div class="inner-title"><span class="lang-zh">提供工具</span><span class="lang-en">Tools</span> · ${e.toolNames.length}</div>
       <div class="tool-tags">${e.toolNames.map((t) => `<span class="tag mono">${esc(t)}</span>`).join("") || '<span class=\"lang-zh\">无</span><span class=\"lang-en\">None</span>'}</div>
@@ -974,7 +974,7 @@ function skillCard(e) {
     <div class="ext-head"><span class="ext-name">${esc(e.name)}</span>
       <span class="hint mono" style="margin-left:8px">v${esc(e.version || "")}</span>
       <span class="pill ${e.enabled ? "green" : "gray"}" style="margin-left:auto">${e.enabled ? "<span class='lang-zh'>已启用</span><span class='lang-en'>Enabled</span>" : "<span class='lang-zh'>已禁用</span><span class='lang-en'>Disabled</span>"}</span></div>
-    <div class="ext-desc">${esc(e.description || "<span class='lang-zh'>暂无描述</span><span class='lang-en'>No description</span>")}</div>
+    <div class="ext-desc">${(e.description ? esc(e.description) : "<span class='lang-zh'>暂无描述</span><span class='lang-en'>No description</span>")}</div>
     ${e.resourceUris?.length ? `<div class="inner-box" style="margin-top:10px">
       <div class="inner-title"><span class="lang-zh">技能资源</span><span class="lang-en">Resources</span></div>
       <div class="mono" style="font-size:11px;color:var(--text2)">${e.resourceUris.map(esc).join("<br>")}</div>
@@ -998,7 +998,7 @@ function connectorCard(e) {
       <span class="dot ${e.enabled && configured ? "green" : "yellow"}" style="margin-left:8px"></span>
       <span class="hint" style="margin-left:4px">${e.enabled ? (configured ? "<span class='lang-zh'>已连接</span><span class='lang-en'>Connected</span>" : "<span class='lang-zh'>待配置</span><span class='lang-en'>Setup</span>") : "<span class='lang-zh'>已禁用</span><span class='lang-en'>Disabled</span>"}</span>
       <span class="pill ${e.enabled ? "green" : "gray"}" style="margin-left:auto">${e.enabled ? "<span class='lang-zh'>已启用</span><span class='lang-en'>Enabled</span>" : "<span class='lang-zh'>已禁用</span><span class='lang-en'>Disabled</span>"}</span></div>
-    <div class="ext-desc">${esc(e.description || "<span class='lang-zh'>暂无描述</span><span class='lang-en'>No description</span>")}</div>
+    <div class="ext-desc">${(e.description ? esc(e.description) : "<span class='lang-zh'>暂无描述</span><span class='lang-en'>No description</span>")}</div>
     ${e.toolNames?.length ? `<div class="ext-tools" style="margin-top:8px">${e.toolNames.map(esc).join(" · ")}</div>` : ""}
     <div class="ext-foot" style="margin-top:10px">
       <span style="display:flex;gap:8px">
