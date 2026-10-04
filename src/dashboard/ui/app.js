@@ -10,6 +10,13 @@ function applyTheme() {
   document.documentElement.dataset.theme = t;
   return t;
 }
+/** 语言：zh/en，存 localStorage，实时生效 */
+function applyLang() {
+  let l = "zh";
+  try { l = localStorage.getItem("lang") || "zh"; } catch { /* ignore */ }
+  document.documentElement.dataset.lang = l;
+  return l;
+}
 async function api(path, opts = {}) {
   const r = await fetch(path, {
     headers: { "Content-Type": "application/json" },
@@ -454,7 +461,7 @@ const Overview = {
   html() {
     return `
     <div class="ov-head">
-      <div class="ov-title-row"><span class="ov-eyebrow">SYSTEM PULSE</span><span class="ov-title">运行概况</span></div>
+      <div class="ov-title-row"><span class="ov-eyebrow lang-en">SYSTEM PULSE</span><span class="ov-title lang-zh">运行概况</span></div>
       <div class="live-pill"><span class="dot green pulse"></span>LIVE</div>
     </div>
     <div class="ov-top">
@@ -500,8 +507,8 @@ const Overview = {
     </div>
     <div class="ov-main">
       <div class="card tp-card">
-        <div class="ov-eyebrow">DATA THROUGHPUT STREAM</div>
-        <div class="tp-head"><span class="tp-title">调用吞吐</span>
+        <div class="ov-eyebrow lang-en">DATA THROUGHPUT STREAM</div>
+        <div class="tp-head"><span class="tp-title lang-zh">调用吞吐</span>
           <span class="tp-legend"><i class="lg-dot" style="background:#8b5cf6"></i>请求 <b class="mono" id="ov-req-min">–</b>/min
           <i class="lg-dot" style="background:#34d399"></i>成功 <b class="mono" id="ov-ok-min">–</b>/min</span>
         </div>
@@ -516,8 +523,8 @@ const Overview = {
         </div>
       </div>
       <div class="card rank-card">
-        <div class="ov-eyebrow">TOOL ACTIVITY</div>
-        <div class="tp-head"><span class="tp-title">工具调用排行</span><span class="hint mono">LIVE · TOP 8</span></div>
+        <div class="ov-eyebrow lang-en">TOOL ACTIVITY</div>
+        <div class="tp-head"><span class="tp-title lang-zh">工具调用排行</span><span class="hint mono">LIVE · TOP 8</span></div>
         <div class="inner-box">
           <div class="inner-title">排行</div>
           <div id="ov-rank"></div>
@@ -544,14 +551,14 @@ const Overview = {
         </div>
       </div>
       <div class="card log-card">
-        <div class="ov-eyebrow">LIVE EVENT STREAM <span class="live-mini"><span class="dot green pulse"></span>LIVE</span></div>
-        <div class="tp-title">实时日志流</div>
+        <div class="ov-eyebrow lang-en">LIVE EVENT STREAM <span class="live-mini"><span class="dot green pulse"></span>LIVE</span></div>
+        <div class="tp-title lang-zh">实时日志流</div>
         <div class="log-stream slim" id="ov-logs"></div>
         <div class="log-foot"><span class="hint">自动滚动</span><span class="follow"><span class="dot green"></span>跟随中</span></div>
       </div>
       <div class="card rel-card">
-        <div class="ov-eyebrow">RELIABILITY</div>
-        <div class="tp-head"><span class="tp-title">调用成功率</span><span class="hint mono">60 SEC</span></div>
+        <div class="ov-eyebrow lang-en">RELIABILITY</div>
+        <div class="tp-head"><span class="tp-title lang-zh">调用成功率</span><span class="hint mono">60 SEC</span></div>
         <div class="inner-box">
           <div class="rel-top">
             <div class="donut-center">
@@ -1258,7 +1265,7 @@ const SettingsModal = {
           </div>
           <div class="set-row">
             <div><div class="set-row-t">语言</div><div class="hint">界面显示语言</div></div>
-            <span style="font-size:12.5px;color:var(--text2)">简体中文</span>
+            <div class="seg" id="lang-seg"><button data-v="zh">中文</button><button data-v="en">English</button></div>
           </div>
           <div class="set-row">
             <div><div class="set-row-t">外观</div><div class="hint">深色 / 浅色主题</div></div>
@@ -1358,6 +1365,11 @@ const SettingsModal = {
       localStorage.setItem("theme", b.dataset.v);
       applyTheme();
       $$("#theme-seg button").forEach((x) => x.classList.toggle("active", x === b));
+    }));
+    $$("#lang-seg button").forEach((b) => b.addEventListener("click", () => {
+      localStorage.setItem("lang", b.dataset.v);
+      applyLang();
+      $$("#lang-seg button").forEach((x) => x.classList.toggle("active", x === b));
     }));
     initCSelect("cs-loglevel", {
       value: "debug",
@@ -1477,6 +1489,7 @@ const SettingsModal = {
   },
   async loadGeneral() {
     $$("#theme-seg button").forEach((x) => x.classList.toggle("active", x.dataset.v === applyTheme()));
+    $$("#lang-seg button").forEach((x) => x.classList.toggle("active", x.dataset.v === applyLang()));
     const [h, ov, m, apList] = await Promise.all([
       api("/api/agent/health").catch(() => null),
       api("/api/overview").catch(() => null),
