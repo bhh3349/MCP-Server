@@ -159,6 +159,12 @@ export class GatewayClient extends EventEmitter {
         this.emit("channel.closed", msg.channelId, msg.reason);
         return;
       case "pong":
+        // 网关心跳回包：计算 RTT，上报延迟
+        if (typeof msg.ts === "number") {
+          this.emit("latency", Date.now() - msg.ts);
+        }
+        return;
+      case "pong":
         this.emit("pong", msg.ts);
         return;
       default:

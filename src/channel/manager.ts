@@ -193,6 +193,14 @@ export class ChannelManager {
     });
     // AI 离开
     client.on("peer.leave", (channelId: string) => this.onAILeft(channelId));
+    // 心跳延迟：更新该网关下所有信道的 latencyMs
+    client.on("latency", (ms: number) => {
+      for (const rec of this.channels.values()) {
+        if (rec.kind === "gateway" && rec.gatewayUrl === gatewayUrl) {
+          rec.latencyMs = ms;
+        }
+      }
+    });
     // 网关关闭信道
     client.on("channel.closed", (channelId: string) => {
       void this.remove(channelId);
