@@ -432,18 +432,16 @@ html[data-lang="en"] .lang-zh { display: none !important; }
 /* 成功率卡片：上排圆环+失败最多，下排调用详情 */
 .rel-top { display: flex; align-items: flex-start; gap: 14px; }
 .rel-top .donut-center { flex-shrink: 0; }
-.rel-fails { flex: 1; min-width: 0; height: 160px; display: flex; flex-direction: column; }
-#ov-fails { flex: 1; display: flex; flex-direction: column; }
-.fail-empty { flex: 1; display: flex; align-items: center; justify-content: center; }
+.rel-fails { flex: 1; min-width: 0; }
 .fail-title { font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
-.fail-head { display: grid; grid-template-columns: 1fr 36px 36px; font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; padding: 6px 8px; background: rgba(255,255,255,.03); border-radius: 6px 6px 0 0; border: 1px solid rgba(255,255,255,.06); border-bottom: none; }
+.fail-head { display: grid; grid-template-columns: 1fr 36px 36px; font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; padding: 10px 8px; background: rgba(255,255,255,.03); border-radius: 6px 6px 0 0; border: 1px solid rgba(255,255,255,.06); border-bottom: none; }
 .fail-head span:nth-child(2), .fail-head span:nth-child(3) { text-align: center; }
-.fail-row { display: grid; grid-template-columns: 1fr 36px 36px; font-family: var(--font-m); font-size: 11px; color: var(--text2); padding: 6px 8px; align-items: center; border: 1px solid rgba(255,255,255,.06); border-top: none; }
+.fail-row { display: grid; grid-template-columns: 1fr 36px 36px; font-family: var(--font-m); font-size: 11px; color: var(--text2); padding: 10px 8px; align-items: center; border: 1px solid rgba(255,255,255,.06); border-top: none; }
 .fail-row:last-child { border-radius: 0 0 6px 6px; }
 .fail-row .fail-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fail-row span:nth-child(2), .fail-row b { text-align: center; }
 .fail-row b { color: var(--red); }
-.fail-empty { padding: 12px 8px; text-align: center; font-size: 11px; color: var(--text3); border: 1px solid rgba(255,255,255,.06); border-top: none; border-radius: 0 0 6px 6px; }
+.fail-empty { padding: 24px 8px; text-align: center; font-size: 11px; color: var(--text3); border: 1px solid rgba(255,255,255,.06); border-top: none; border-radius: 0 0 6px 6px; }
 .rel-div { height: 1px; background: rgba(255,255,255,.06); margin: 10px 0; }
 /* 最近调用滚动列表 */
 .call-list { flex: 1; min-height: 60px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
