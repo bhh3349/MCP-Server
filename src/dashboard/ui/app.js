@@ -919,22 +919,27 @@ const ChannelsPage = {
     const d = this.dfGw;
     openModal(`<div class="modal-title"><span class="lang-zh">新建信道</span><span class="lang-en">New Channel</span></div>
       <div class="field"><label><span class="lang-zh">信道名称</span><span class="lang-en">Name</span></label><input id="nc-name" value="channel" maxlength="64"></div>
-      <div class="field"><label><span class="lang-zh">类型</span><span class="lang-en">Type</span></label><select id="nc-kind">
-        <option value="local"><span class='lang-zh'>本地信道</span><span class='lang-en'>Local</span>（局域网直连，一<span class='lang-zh'>个</span> URL 搞定）</option>
-        <option value="gateway"><span class='lang-zh'>网关信道</span><span class='lang-en'>Gateway</span>（经<span class='lang-zh'>网关</span><span class='lang-en'>Gateway</span>，<span class='lang-zh'>配对码</span><span class='lang-en'>Pair Code</span> join）</option>
-      </select></div>
+      <div class="field"><label><span class="lang-zh">类型</span><span class="lang-en">Type</span></label><div class="cselect" id="nc-kind"></div></div>
       <div id="nc-gw-fields" class="hidden">
         <div class="field"><label><span class="lang-zh">网关地址</span><span class="lang-en">Gateway URL</span></label><input id="nc-url" placeholder="ws://23.251.34.248:8080" value="${esc(d.url)}"></div>
         <div class="field"><label><span class="lang-zh">网关</span><span class="lang-en">Gateway</span> Token（64 位 hex，<span class="lang-zh">只存本机</span><span class="lang-en">Local only</span>）</label><input id="nc-token" placeholder="64 位 hex" data-ph-en="64-bit hex" value="${esc(d.token)}" type="password"></div>
       </div>
       <div class="modal-actions"><button class="btn ghost" id="m-cancel"><span class="lang-zh">取消</span><span class="lang-en">Cancel</span></button><button class="btn" id="m-ok"><span class="lang-zh">建立</span><span class="lang-en">Create</span></button></div>
       <div id="nc-result"></div>`);
+    const lang = document.documentElement.dataset.lang || "zh";
+    initCSelect("nc-kind", {
+      value: "local",
+      onChange: (v) => $("#nc-gw-fields").classList.toggle("hidden", v !== "gateway"),
+      options: [
+        { value: "local", zh: "本地信道（局域网直连，一个 URL 搞定）", en: "Local (LAN direct, one URL)" },
+        { value: "gateway", zh: "网关信道（经网关，配对码 join）", en: "Gateway (via gateway, pair code join)" },
+      ].map((o) => ({ value: o.value, label: lang === "en" ? o.en : o.zh, zh: o.zh, en: o.en })),
+    });
     const kindSel = $("#nc-kind");
-    kindSel.addEventListener("change", () => $("#nc-gw-fields").classList.toggle("hidden", kindSel.value !== "gateway"));
     $("#m-cancel").addEventListener("click", closeModal);
     $("#m-ok").addEventListener("click", async () => {
       const name = $("#nc-name").value.trim() || "channel";
-      const kind = kindSel.value;
+      const kind = kindSel._getVal();
       const btn = $("#m-ok"); btn.disabled = true; btn.innerHTML = "<span class='lang-zh'>建立中</span><span class='lang-en'>Creating</span>…";
       try {
         let r;
@@ -1235,7 +1240,7 @@ const LogsPage = {
   html() {
     return `<div class="sec-head"><div class="sec-title"><span class="lang-zh">日志</span><span class="lang-en">Logs</span></div>
       <div class="log-toolbar">
-        <select id="log-level"><option value="" data-opt-en="All">全部级别</option><option value="info">INFO</option><option value="warn">WARN</option><option value="error">ERROR</option><option value="debug">DEBUG</option></select>
+        <div class="cselect" id="log-level"></div>
         <button class="btn sm ghost" id="log-pause"><span class="lang-zh">暂停</span><span class="lang-en">Pause</span></button>
         <button class="btn sm ghost" id="log-clear"><span class="lang-zh">清空</span><span class="lang-en">Clear</span></button>
       </div></div>
@@ -1243,7 +1248,17 @@ const LogsPage = {
   },
   init() {
     $("#page-logs").innerHTML = this.html();
-    $("#log-level").addEventListener("change", () => { this.since = 0; $("#log-view").innerHTML = ""; this.poll(); });
+    const lang = document.documentElement.dataset.lang || "zh";
+    initCSelect("log-level", {
+      value: "", onChange: () => { this.since = 0; $("#log-view").innerHTML = ""; this.poll(); },
+      options: [
+        { value: "", zh: "全部级别", en: "All Levels" },
+        { value: "info", zh: "INFO", en: "INFO" },
+        { value: "warn", zh: "WARN", en: "WARN" },
+        { value: "error", zh: "ERROR", en: "ERROR" },
+        { value: "debug", zh: "DEBUG", en: "DEBUG" },
+      ].map((o) => ({ value: o.value, label: lang === "en" ? o.en : o.zh, zh: o.zh, en: o.en })),
+    });
     $("#log-pause").addEventListener("click", (e) => {
       this.paused = !this.paused;
       e.target.innerHTML = this.paused ? "<span class='lang-zh'>继续</span><span class='lang-en'>Continue</span>" : "<span class='lang-zh'>暂停</span><span class='lang-en'>Pause</span>";
@@ -1254,7 +1269,7 @@ const LogsPage = {
   stop() { if (this.timer) { clearInterval(this.timer); this.timer = null; } },
   async poll() {
     if (this.paused || currentPage !== "logs") return;
-    const lv = $("#log-level")?.value || "";
+    const lv = $("#log-level")?._getVal() || "";
     const logs = await api(`/api/logs?limit=200&since=${this.since}${lv ? `&level=${lv}` : ""}`).catch(() => []);
     if (!logs.length) return;
     this.since = logs[logs.length - 1].id;
