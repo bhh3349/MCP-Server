@@ -1,1 +1,56 @@
-LyoqCiAqIOaJqeWxleazqOWGjOihqO+8mue7n+S4gOeuoeeQhuaPkuS7tiAvIOaKgOiDvSAvIOi/nuaOpeWZqOOAggogKgogKiDnm67lvZXluIPlsYDvvIjpu5jorqQgLi9leHRlbnNpb25z77yM5Y+v55SoIE1DUF9FWFRFTlNJT05TX0RJUiDopobnm5bvvInvvJoKICogICBleHRlbnNpb25zLwogKiAgICAgcGx1Z2lucy88bmFtZT4vbWFuaWZlc3QuanNvbiArIGluZGV4LmpzCiAqICAgICBza2lsbHMvPG5hbWU+L1NLSUxMLm1kICgrIHNjcmlwdHMvKQogKiAgICAgY29ubmVjdG9ycy88bmFtZT4vbWFuaWZlc3QuanNvbiArIGluZGV4LmpzICsgY29uZmlnLmpzb24KICovCmltcG9ydCB7IGpvaW4gfSBmcm9tICJub2RlOnBhdGgiOwppbXBvcnQgdHlwZSB7IE1jcFNlcnZlciB9IGZyb20gIkBtb2RlbGNvbnRleHRwcm90b2NvbC9zZXJ2ZXIiOwppbXBvcnQgeyBsb2FkUGx1Z2lucyB9IGZyb20gIi4vcGx1Z2luLmpzIjsKaW1wb3J0IHsgbG9hZFNraWxscyB9IGZyb20gIi4vc2tpbGwuanMiOwppbXBvcnQgeyBsb2FkQ29ubmVjdG9ycyB9IGZyb20gIi4vY29ubmVjdG9yLmpzIjsKaW1wb3J0IHR5cGUgeyBFeHRlbnNpb25LaW5kLCBMb2FkZWRFeHRlbnNpb24gfSBmcm9tICIuL3R5cGVzLmpzIjsKCmV4cG9ydCBjbGFzcyBFeHRlbnNpb25SZWdpc3RyeSB7CiAgcHJpdmF0ZSBleHRlbnNpb25zOiBMb2FkZWRFeHRlbnNpb25bXSA9IFtdOwoKICBjb25zdHJ1Y3Rvcihwcml2YXRlIHNlcnZlcjogTWNwU2VydmVyLCBwcml2YXRlIHJvb3REaXI6IHN0cmluZykge30KCiAgYXN5bmMgbG9hZEFsbCgpOiBQcm9taXNlPHZvaWQ+IHsKICAgIGNvbnN0IFtwbHVnaW5zLCBza2lsbHMsIGNvbm5lY3RvcnNdID0gYXdhaXQgUHJvbWlzZS5hbGwoWwogICAgICBsb2FkUGx1Z2lucyh0aGlzLnNlcnZlciwgam9pbih0aGlzLnJvb3REaXIsICJwbHVnaW5zIikpLAogICAgICBsb2FkU2tpbGxzKHRoaXMuc2VydmVyLCBqb2luKHRoaXMucm9vdERpciwgInNraWxscyIpKSwKICAgICAgbG9hZENvbm5lY3RvcnModGhpcy5zZXJ2ZXIsIGpvaW4odGhpcy5yb290RGlyLCAiY29ubmVjdG9ycyIpKSwKICAgIF0pOwogICAgdGhpcy5leHRlbnNpb25zID0gWy4uLnBsdWdpbnMsIC4uLnNraWxscywgLi4uY29ubmVjdG9yc107CiAgICBjb25zdCBjb3VudHMgPSB7CiAgICAgIHBsdWdpbnM6IHBsdWdpbnMubGVuZ3RoLAogICAgICBza2lsbHM6IHNraWxscy5sZW5ndGgsCiAgICAgIGNvbm5lY3RvcnM6IGNvbm5lY3RvcnMubGVuZ3RoLAogICAgfTsKICAgIGNvbnNvbGUubG9nKGBbZXh0ZW5zaW9uc10gbG9hZGVkOiAke0pTT04uc3RyaW5naWZ5KGNvdW50cyl9YCk7CiAgfQoKICBsaXN0KGtpbmQ/OiBFeHRlbnNpb25LaW5kKTogTG9hZGVkRXh0ZW5zaW9uW10gewogICAgcmV0dXJuIGtpbmQgPyB0aGlzLmV4dGVuc2lvbnMuZmlsdGVyKChlKSA9PiBlLmtpbmQgPT09IGtpbmQpIDogWy4uLnRoaXMuZXh0ZW5zaW9uc107CiAgfQoKICBnZXQobmFtZTogc3RyaW5nKTogTG9hZGVkRXh0ZW5zaW9uIHwgdW5kZWZpbmVkIHsKICAgIHJldHVybiB0aGlzLmV4dGVuc2lvbnMuZmluZCgoZSkgPT4gZS5tYW5pZmVzdC5uYW1lID09PSBuYW1lKTsKICB9CgogIGFzeW5jIGRpc2FibGUobmFtZTogc3RyaW5nKTogUHJvbWlzZTxib29sZWFuPiB7CiAgICBjb25zdCBleHQgPSB0aGlzLmdldChuYW1lKTsKICAgIGlmICghZXh0KSByZXR1cm4gZmFsc2U7CiAgICBhd2FpdCBleHQuZGlzYWJsZSgpOwogICAgcmV0dXJuIHRydWU7CiAgfQoKICAvKiog5rOo5YaM5YiwIE1DUCDnmoTlhajpg6jlt6XlhbflkI3vvIjlkKvlkb3lkI3nqbrpl7TvvIkgKi8KICB0b29sTmFtZXMoKTogc3RyaW5nW10gewogICAgcmV0dXJuIHRoaXMuZXh0ZW5zaW9ucy5mbGF0TWFwKChlKSA9PiBlLnRvb2xOYW1lcyk7CiAgfQp9Cg==
+/**
+ * 扩展注册表：统一管理插件 / 技能 / 连接器。
+ *
+ * 目录布局（默认 ./extensions，可用 MCP_EXTENSIONS_DIR 覆盖）：
+ *   extensions/
+ *     plugins/<name>/manifest.json + index.js
+ *     skills/<name>/SKILL.md (+ scripts/)
+ *     connectors/<name>/manifest.json + index.js + config.json
+ */
+import { join } from "node:path";
+import type { McpServer } from "@modelcontextprotocol/server";
+import { loadPlugins } from "./plugin.js";
+import { loadSkills } from "./skill.js";
+import { loadConnectors } from "./connector.js";
+import type { ExtensionKind, LoadedExtension } from "./types.js";
+
+export class ExtensionRegistry {
+  private extensions: LoadedExtension[] = [];
+
+  constructor(private server: McpServer, private rootDir: string) {}
+
+  async loadAll(): Promise<void> {
+    const [plugins, skills, connectors] = await Promise.all([
+      loadPlugins(this.server, join(this.rootDir, "plugins")),
+      loadSkills(this.server, join(this.rootDir, "skills")),
+      loadConnectors(this.server, join(this.rootDir, "connectors")),
+    ]);
+    this.extensions = [...plugins, ...skills, ...connectors];
+    const counts = {
+      plugins: plugins.length,
+      skills: skills.length,
+      connectors: connectors.length,
+    };
+    console.log(`[extensions] loaded: ${JSON.stringify(counts)}`);
+  }
+
+  list(kind?: ExtensionKind): LoadedExtension[] {
+    return kind ? this.extensions.filter((e) => e.kind === kind) : [...this.extensions];
+  }
+
+  get(name: string): LoadedExtension | undefined {
+    return this.extensions.find((e) => e.manifest.name === name);
+  }
+
+  async disable(name: string): Promise<boolean> {
+    const ext = this.get(name);
+    if (!ext) return false;
+    await ext.disable();
+    return true;
+  }
+
+  /** 注册到 MCP 的全部工具名（含命名空间） */
+  toolNames(): string[] {
+    return this.extensions.flatMap((e) => e.toolNames);
+  }
+}
