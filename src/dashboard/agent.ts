@@ -7,7 +7,9 @@ export interface ChatMsg { role: "user" | "assistant"; content: string }
 
 const SYSTEM = `你是 MCP-Server 控制中心的内嵌运维助手。你监控本地 MCP 服务器的运行状态，可以查看错误、诊断问题、调整参数。
 
-你可用的工具（用 JSON 调用，一次一个）：
+你可用的工具（一次一个，两种格式任选）：
+JSON：{"tool":"health"} / {"tool":"errors","limit":20} / {"tool":"isolate","name":"工具名"}
+或标签：<longcat_tool_call>health</longcat_tool_call>
 - {"tool":"health"} 获取综合健康状态（工具数、调用统计、最近错误、桥接状态）
 - {"tool":"tool_stats"} 获取各工具调用/错误明细
 - {"tool":"errors","limit":20} 获取最近错误列表
@@ -23,7 +25,7 @@ const SYSTEM = `你是 MCP-Server 控制中心的内嵌运维助手。你监控�
 1. 需要数据时先调用工具，不要猜测。
 2. 工具返回后，用简洁中文总结给用户，关键数字要准确。
 3. 隔离工具、改配置等危险操作，先说明原因再执行。
-4. 只输出纯文本回复，或单行 JSON 工具调用，不要混在一起。`;
+4. 只输出纯文本回复，或单行工具调用，不要混在一起。`;
 
 async function callLLM(p: ModelProvider, messages: ChatMsg[]): Promise<string> {
   if (p.type === "anthropic") {
@@ -57,6 +59,31 @@ async function callLLM(p: ModelProvider, messages: ChatMsg[]): Promise<string> {
 export type ToolExecutor = (tool: string, args: Record<string, unknown>) => Promise<unknown>;
 
 const TOOL_RE = /\{\s*"tool"\s*:\s*"([^"]+)"[^}]*\}/;
+// LongCat 等模型的原生工具调用格式：<longcat_tool_call>tool</longcat_tool_call>
+// 或带参数 <longcat_tool_call>tool\n{"arg":"v"}</longcat_tool_call>
+const LONGCAT_RE = /<longcat_tool_call>\s*([a-z_]+)\s*(?:\n([\s\S]*?))?<\/longcat_tool_call>/;
+
+/** 从模型输出里提取工具调用，支持 JSON 和 LongCat 两种格式 */
+function parseToolCall(out: string): { tool: string; args: Record<string, unknown>; strip: RegExp } | null {
+  const jm = out.match(TOOL_RE);
+  if (jm) {
+    try {
+      const parsed = JSON.parse(jm[0]) as { tool: string; [k: string]: unknown };
+      const { tool, ...args } = parsed;
+      if (tool) return { tool, args, strip: TOOL_RE };
+    } catch { /* fall through */ }
+  }
+  const lm = out.match(LONGCAT_RE);
+  if (lm && lm[1]) {
+    let args: Record<string, unknown> = {};
+    const argText = (lm[2] || "").trim();
+    if (argText) {
+      try { args = JSON.parse(argText) as Record<string, unknown>; } catch { /* ignore */ }
+    }
+    return { tool: lm[1], args, strip: LONGCAT_RE };
+  }
+  return null;
+}
 
 export async function agentChat(
   provider: ModelProvider,
@@ -70,16 +97,14 @@ export async function agentChat(
   for (;;) {
     const out = await callLLM(provider, messages);
     messages.push({ role: "assistant", content: out });
-    const m = out.match(TOOL_RE);
-    if (!m || steps >= maxSteps) {
-      // 去掉残留的 JSON 行，只保留文本
-      const reply = out.replace(TOOL_RE, "").trim() || out.trim();
+    const tc = parseToolCall(out);
+    if (!tc || steps >= maxSteps) {
+      // 去掉残留的工具调用标记，只保留文本
+      const reply = out.replace(TOOL_RE, "").replace(LONGCAT_RE, "").trim() || out.trim();
       return { reply, steps };
     }
     steps++;
-    let parsed: { tool: string; [k: string]: unknown };
-    try { parsed = JSON.parse(m[0]); } catch { break; }
-    const { tool, ...args } = parsed;
+    const { tool, args } = tc;
     let result: unknown;
     try { result = await exec(tool, args); }
     catch (e) { result = { error: e instanceof Error ? e.message : String(e) }; }
