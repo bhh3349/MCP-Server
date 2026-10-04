@@ -952,7 +952,8 @@ function makeExtPage(kind, title, pageId, badgeId, cardFn) {
   return {
     async show() {
       const wrap = $(`#${pageId}`);
-      wrap.innerHTML = `<div class="sec-head"><div class="sec-title">${title}</div></div><div id="${pageId}-wrap"></div>`;
+      wrap.innerHTML = `<div class="sec-head"><div class="sec-title">${title}</div><button class="btn sm" id="${pageId}-add">＋ 添加</button></div><div id="${pageId}-wrap"></div>`;
+      $(`#${pageId}-add`).addEventListener("click", () => openInstallModal(kind, title, () => this.show()));
       const exts = await api("/api/extensions").catch(() => []);
       const items = exts.filter((e) => e.kind === kind);
       const badge = $(`#${badgeId}`);
@@ -983,6 +984,45 @@ function openExtConfig(name) {
     try {
       await api(`/api/extensions/${encodeURIComponent(name)}/config`, { method: "POST", body: { token } });
       toast("Token 已保存，重启 dashboard 后生效"); closeModal();
+    } catch (e) { toast(e.message, false); }
+  });
+}
+
+// 安装扩展：插件/连接器传 JS 文件，技能传 SKILL.md
+function openInstallModal(kind, title, onDone) {
+  const isSkill = kind === "skill";
+  const accept = isSkill ? ".md" : ".js";
+  const fileLabel = isSkill ? "SKILL.md 文件" : "入口 JS 文件 (index.js)";
+  openModal(`<div class="modal-title">添加${title}</div>
+    <div class="field"><label>名称（英文、数字、-_）</label><input id="ins-name" class="mono" placeholder="my-ext"></div>
+    ${isSkill ? "" : `<div class="field"><label>版本</label><input id="ins-ver" class="mono" placeholder="0.1.0"></div>
+    <div class="field"><label>描述</label><input id="ins-desc" placeholder="这个扩展是做什么的"></div>`}
+    <div class="field"><label>${fileLabel}</label><input id="ins-file" type="file" accept="${accept}"></div>
+    <div class="hint" style="margin-bottom:12px">安装后重启 dashboard 生效</div>
+    <div class="modal-actions"><button class="btn ghost" id="m-cancel">取消</button><button class="btn primary" id="m-ok">安装</button></div>`);
+  $("#m-cancel").addEventListener("click", closeModal);
+  $("#m-ok").addEventListener("click", async () => {
+    const name = $("#ins-name").value.trim();
+    const file = $("#ins-file").files[0];
+    if (!/^[a-zA-Z0-9_-]{1,64}$/.test(name)) { toast("名称不合法", false); return; }
+    if (!file) { toast("请选择文件", false); return; }
+    if (file.size > 5 * 1024 * 1024) { toast("文件过大（>5MB）", false); return; }
+    const buf = await file.arrayBuffer();
+    let b64 = "";
+    const bytes = new Uint8Array(buf);
+    for (let i = 0; i < bytes.length; i += 8192) {
+      b64 += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    }
+    b64 = btoa(b64);
+    const filename = isSkill ? "SKILL.md" : "index.js";
+    try {
+      const r = await api("/api/extensions/install", { method: "POST", body: {
+        kind, name,
+        version: $("#ins-ver")?.value.trim() || "0.1.0",
+        description: $("#ins-desc")?.value.trim() || "",
+        files: [{ filename, content: b64 }],
+      }});
+      if (r?.ok) { toast(`已安装，重启 dashboard 后生效`); closeModal(); onDone(); }
     } catch (e) { toast(e.message, false); }
   });
 }
