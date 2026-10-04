@@ -1636,6 +1636,17 @@ const PAGES = {
 };
 
 (async function boot() {
+  // Tauri 桌面端：显示窗口控制按钮
+  try {
+    if (window.__TAURI__) {
+      document.documentElement.classList.add("tauri");
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      const win = getCurrentWindow();
+      $("#win-min")?.addEventListener("click", () => win.minimize());
+      $("#win-max")?.addEventListener("click", () => win.toggleMaximize());
+      $("#win-close")?.addEventListener("click", () => win.close());
+    }
+  } catch { /* 浏览器环境，忽略 */ }
   try {
     const ov = await api("/api/overview");
     { const _u = $("#uptime"); if (_u) _u.textContent = `运行时长 ${fmtUptime(ov.uptimeSec)}`; }
