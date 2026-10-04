@@ -1,0 +1,199 @@
+//! MCP-Server Tauri 后端。
+//!
+//! 启动流程：
+//! 1. 在后台线程拉起 Node sidecar：`node <dist>/local/cli.js --dashboard`
+//!    （dist 来自安装包 resources，dev 模式下回退到项目根 dist/）
+//! 2. 轮询 127.0.0.1:18789（DASHBOARD_PORT）直到端口可连接
+//! 3. 显示主窗口（窗口初始 visible=false，避免白屏/连接失败闪屏）
+//! 4. 进程退出时回收 sidecar。
+//!
+//! Node 查找顺序：环境变量 MCP_NODE > 安装包内 node-bin/ > PATH 上的 node。
+
+use std::net::TcpStream;
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command, Stdio};
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+
+use tauri::{Manager, RunEvent};
+
+const DASHBOARD_PORT: u16 = 18789;
+const READY_TIMEOUT: Duration = Duration::from_secs(60);
+const POLL_INTERVAL: Duration = Duration::from_millis(400);
+
+struct Sidecar(Mutex<Option<Child>>);
+
+/// 在 `base` 下按 Tauri resources 布局 / dev 布局找 cli.js
+fn cli_candidates(base: &Path) -> Vec<PathBuf> {
+    vec![
+        // 安装包：resources/dist/local/cli.js（resources: ["../dist/**"] 归一化后）
+        base.join("dist").join("local").join("cli.js"),
+        // dev：resource_dir 指向 src-tauri 时
+        base.join("..").join("dist").join("local").join("cli.js"),
+    ]
+}
+
+/// dev 模式：从可执行文件向上找到 src-tauri，再取项目根 dist/
+fn find_dev_dist() -> Option<PathBuf> {
+    let mut dir = std::env::current_exe().ok()?.parent()?.to_path_buf();
+    for _ in 0..6 {
+        if dir.join("tauri.conf.json").is_file() {
+            let cli = dir
+                .parent()?
+                .join("dist")
+                .join("local")
+                .join("cli.js");
+            if cli.is_file() {
+                return Some(cli);
+            }
+        }
+        dir = dir.parent()?.to_path_buf();
+    }
+    None
+}
+
+fn resolve_cli_js(app: &tauri::AppHandle) -> Option<PathBuf> {
+    if let Ok(rd) = app.path().resource_dir() {
+        if let Some(p) = cli_candidates(&rd).into_iter().find(|p| p.is_file()) {
+            return Some(p);
+        }
+    }
+    find_dev_dist()
+}
+
+fn resolve_node(resource_dir: &Path) -> PathBuf {
+    if let Ok(p) = std::env::var("MCP_NODE") {
+        let p = PathBuf::from(p);
+        if p.is_file() {
+            return p;
+        }
+    }
+    // 安装包自带的 portable node（构建时手动放入 src-tauri/node-bin/）
+    #[cfg(windows)]
+    let bundled = resource_dir.join("node-bin").join("node.exe");
+    #[cfg(not(windows))]
+    let bundled = resource_dir.join("node-bin").join("node");
+    if bundled.is_file() {
+        return bundled;
+    }
+    // 回退：PATH 上的 node
+    PathBuf::from("node")
+}
+
+/// cli.js 所在 <base>/dist/local/cli.js → 工作目录取 <base>
+/// （prod: resources/；dev: 项目根），保证 extensions/ 等相对路径行为一致。
+fn workdir_for(cli_js: &Path) -> PathBuf {
+    cli_js
+        .parent() // local/
+        .and_then(|p| p.parent()) // dist/
+        .and_then(|p| p.parent()) // base
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."))
+}
+
+fn spawn_sidecar(app: &tauri::AppHandle) -> Option<Child> {
+    let cli_js = resolve_cli_js(app)?;
+    let resource_dir = app.path().resource_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let node = resolve_node(&resource_dir);
+    let workdir = workdir_for(&cli_js);
+
+    eprintln!("[tauri] node: {}", node.display());
+    eprintln!("[tauri] cli:  {}", cli_js.display());
+    eprintln!("[tauri] cwd:  {}", workdir.display());
+
+    let mut cmd = Command::new(&node);
+    cmd.arg(&cli_js)
+        .arg("--dashboard")
+        .env("DASHBOARD_PORT", DASHBOARD_PORT.to_string())
+        .current_dir(&workdir)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // 不弹黑窗口
+        cmd.creation_flags(0x08000000);
+    }
+    match cmd.spawn() {
+        Ok(child) => {
+            eprintln!("[tauri] sidecar pid={}", child.id());
+            Some(child)
+        }
+        Err(e) => {
+            eprintln!("[tauri] sidecar 启动失败: {e}");
+            None
+        }
+    }
+}
+
+fn port_open() -> bool {
+    TcpStream::connect(("127.0.0.1", DASHBOARD_PORT)).is_ok()
+}
+
+/// 等 dashboard 就绪；sidecar 提前退出也直接返回（让窗口显示，由前端报错）。
+fn wait_ready(sidecar: &Sidecar) -> bool {
+    let start = Instant::now();
+    while start.elapsed() < READY_TIMEOUT {
+        if port_open() {
+            return true;
+        }
+        if let Ok(mut g) = sidecar.0.lock() {
+            if let Some(c) = g.as_mut() {
+                if let Ok(Some(_)) = c.try_wait() {
+                    eprintln!("[tauri] sidecar 已退出，停止等待");
+                    return false;
+                }
+            }
+        }
+        std::thread::sleep(POLL_INTERVAL);
+    }
+    eprintln!("[tauri] 等待 dashboard 超时");
+    false
+}
+
+fn kill_sidecar(app: &tauri::AppHandle) {
+    if let Some(s) = app.try_state::<Sidecar>() {
+        if let Ok(mut g) = s.0.lock() {
+            if let Some(mut c) = g.take() {
+                eprintln!("[tauri] 回收 sidecar pid={}", c.id());
+                let _ = c.kill();
+                let _ = c.wait();
+            }
+        }
+    }
+}
+
+fn main() {
+    tauri::Builder::default()
+        .manage(Sidecar(Mutex::new(None)))
+        .setup(|app| {
+            let handle = app.handle().clone();
+            // 后台线程拉起 sidecar，避免阻塞主线程
+            std::thread::spawn(move || {
+                let child = spawn_sidecar(&handle);
+                if let Some(c) = child {
+                    if let Some(s) = handle.try_state::<Sidecar>() {
+                        if let Ok(mut g) = s.0.lock() {
+                            *g = Some(c);
+                        }
+                    }
+                }
+                if let Some(s) = handle.try_state::<Sidecar>() {
+                    wait_ready(&s);
+                }
+                if let Some(w) = handle.get_webview_window("main") {
+                    let _ = w.show();
+                    let _ = w.set_focus();
+                }
+            });
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("tauri 启动失败")
+        .run(|app, event| {
+            if let RunEvent::Exit = event {
+                kill_sidecar(app);
+            }
+        });
+}

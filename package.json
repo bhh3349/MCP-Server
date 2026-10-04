@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
+    "@tauri-apps/api": "^2",
     "@types/ws": "^8.18.2",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
@@ -10,6 +11,7 @@
   },
   "description": "MCP-Server: complete local MCP system — full PC control, tools, plugins, skills, connectors. Tunnel to gateway is one component.",
   "devDependencies": {
+    "@tauri-apps/cli": "^2.12.1",
     "@types/node": "^22.0.0",
     "@types/ssh2": "^1.15.6",
     "tsx": "^4.0.0",
@@ -29,7 +31,10 @@
     "test:load": "tsx --test test/gateway/load.test.ts",
     "build:bundle": "esbuild src/gateway/cli.ts --bundle --platform=node --format=cjs --minify --outfile=release/gateway.cjs",
     "channel": "tsx src/channel/cli.ts",
-    "dashboard": "tsx src/dashboard/cli.ts"
+    "dashboard": "tsx src/dashboard/cli.ts",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "npm run build && tauri build"
   },
   "type": "module",
   "version": "0.1.0"
