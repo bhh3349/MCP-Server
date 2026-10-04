@@ -413,14 +413,20 @@ input, select, textarea { font-family: inherit; }
 .rank-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.05); }
 
 /* 成功率卡 */
-.donut-side { flex: 1; }
-.fail-title { font-size: 10.5px; color: var(--text3); margin-bottom: 8px; }
-.fail-row { display: flex; align-items: center; justify-content: space-between; font-family: var(--font-m); font-size: 11px; color: var(--text2); margin-bottom: 6px; }
+/* 成功率卡片：上排圆环+失败最多，下排调用详情 */
+.rel-top { display: flex; align-items: flex-start; gap: 14px; }
+.rel-top .donut-center { flex-shrink: 0; }
+.rel-fails { flex: 1; min-width: 0; }
+.fail-title { font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+.fail-head { display: grid; grid-template-columns: 1fr 44px 44px; font-size: 10px; color: var(--text3); padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.06); margin-bottom: 4px; }
+.fail-head span:nth-child(2), .fail-head span:nth-child(3) { text-align: center; }
+.fail-row { display: grid; grid-template-columns: 1fr 44px 44px; font-family: var(--font-m); font-size: 11px; color: var(--text2); margin-bottom: 6px; align-items: center; }
+.fail-row .fail-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fail-row span:nth-child(2), .fail-row b { text-align: center; }
 .fail-row b { color: var(--red); }
-.rel-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,.05); }
-.rel-foot b { color: var(--text); }
+.rel-div { height: 1px; background: rgba(255,255,255,.06); margin: 10px 0; }
 /* 最近调用滚动列表 */
-.call-list { flex: 1; min-height: 60px; max-height: 150px; overflow-y: auto; margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+.call-list { flex: 1; min-height: 60px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; }
 .call-row { display: flex; align-items: center; gap: 8px; font-family: var(--font-m); font-size: 11px; color: var(--text2); padding: 4px 8px; border-radius: 6px; background: rgba(255,255,255,.02); }
 .call-row .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .call-row .dot.ok { background: var(--green); box-shadow: 0 0 6px rgba(52,211,153,.6); }
@@ -469,7 +475,6 @@ canvas.chart { width: 100%; display: block; }
 .rank-bar { flex: 1; height: 7px; background: var(--panel2); border-radius: 4px; overflow: hidden; }
 .rank-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width .5s ease; }
 .rank-num { width: 44px; text-align: right; font-family: var(--font-m); font-size: 11px; color: var(--text2); }
-.donut-wrap { display: flex; align-items: center; gap: 16px; }
 .donut-center { position: relative; width: 96px; height: 96px; flex-shrink: 0; }
 .donut-center svg { display: block; }
 .donut-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
