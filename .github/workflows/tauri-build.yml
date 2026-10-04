@@ -26,6 +26,12 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+      - name: Verify dist
+        run: |
+          if (-Not (Test-Path "dist/local/cli.js")) { throw "dist/local/cli.js not found" }
+          Get-ChildItem dist -Recurse | Measure-Object | Select-Object Count
+        shell: pwsh
+
       - name: Build Tauri app
         run: npx tauri build
 
