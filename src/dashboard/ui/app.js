@@ -553,24 +553,25 @@ const Overview = {
         <div class="ov-eyebrow">RELIABILITY</div>
         <div class="tp-head"><span class="tp-title">调用成功率</span><span class="hint mono">60 SEC</span></div>
         <div class="inner-box">
-          <div class="inner-title">成功率</div>
-        <div class="donut-wrap">
-          <div class="donut-center">
-            <svg viewBox="0 0 120 120" width="96" height="96">
-              <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="11"/>
-              <circle id="ov-donut-arc" cx="60" cy="60" r="52" fill="none" stroke="#4ade80" stroke-width="11"
-                stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73"
-                transform="rotate(-90 60 60)" style="transition: stroke-dashoffset .6s ease, stroke .3s"/>
-            </svg>
-            <div class="donut-label"><b id="ov-rate">–</b><span>成功率</span></div>
+          <div class="rel-top">
+            <div class="donut-center">
+              <svg viewBox="0 0 120 120" width="96" height="96">
+                <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="11"/>
+                <circle id="ov-donut-arc" cx="60" cy="60" r="52" fill="none" stroke="#4ade80" stroke-width="11"
+                  stroke-linecap="round" stroke-dasharray="326.73" stroke-dashoffset="326.73"
+                  transform="rotate(-90 60 60)" style="transition: stroke-dashoffset .6s ease, stroke .3s"/>
+              </svg>
+              <div class="donut-label"><b id="ov-rate">–</b><span>成功率</span></div>
+            </div>
+            <div class="rel-fails">
+              <div class="fail-title">失败最多</div>
+              <div class="fail-head"><span>工具名</span><span>成功</span><span>失败</span></div>
+              <div id="ov-fails"></div>
+            </div>
           </div>
-          <div class="donut-side">
-            <div class="fail-title">失败最多</div>
-            <div id="ov-fails"></div>
-          </div>
-        </div>
-        <div class="rel-foot"><span class="hint">成功 <b class="mono" id="ov-ok-total">–</b></span><span class="hint">失败 <b class="mono" id="ov-err-total">–</b></span></div>
-        <div class="call-list" id="ov-calls"><div class="hint">暂无调用</div></div>
+          <div class="rel-div"></div>
+          <div class="fail-title">调用详情</div>
+          <div class="call-list" id="ov-calls"><div class="hint">暂无调用</div></div>
         </div>
       </div>
     </div>`;
@@ -756,10 +757,8 @@ const Overview = {
       drawDonut(rate);
       const fails = [...st.tools].filter((t) => t.errors > 0).sort((a, b) => b.errors - a.errors).slice(0, 3);
       $("#ov-fails").innerHTML = fails.length ? fails.map((t) => `
-        <div class="fail-row"><span>${esc(t.name)}</span><b>${t.errors}</b></div>`).join("")
+        <div class="fail-row"><span class="fail-name">${esc(t.name)}</span><span class="mono">${t.calls - t.errors}</span><b class="mono">${t.errors}</b></div>`).join("")
         : `<div class="hint">暂无失败</div>`;
-      $("#ov-ok-total").textContent = st.summary.totalCalls - st.summary.totalErrors;
-      $("#ov-err-total").textContent = st.summary.totalErrors;
       // ---- 最近调用（滚动） ----
       const calls = ov.recentCalls || [];
       $("#ov-calls").innerHTML = calls.length ? calls.map((c) => `
