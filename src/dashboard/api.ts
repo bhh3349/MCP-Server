@@ -556,7 +556,25 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
             return { ok: true, enabled: on };
           }
           case "channels":
-            return mgr.listChannels().map((c) => ({ id: c.bindingId, name: c.name, paired: c.paired, liveness: c.liveness }));
+            return mgr.listChannels().map((c) => ({
+              id: c.bindingId, name: c.name, kind: c.kind,
+              gatewayUrl: c.gatewayUrl || undefined,
+              latencyMs: c.latencyMs,
+              paired: c.paired,
+              ai: c.ai ? { name: c.ai.name, model: c.ai.model, online: c.ai.online } : null,
+              liveness: c.liveness,
+              calls: c.stats.requestsIn, errors: c.stats.errors,
+            }));
+          case "gateway": {
+            const bs = mgr.bridgeStatus();
+            return {
+              enabled: bs.enabled,
+              pipes: bs.pipes.map((p) => ({
+                url: p.gatewayUrl, state: p.state, connected: p.connected,
+                channels: p.channelCount, avgLatencyMs: p.avgLatencyMs,
+              })),
+            };
+          }
           case "loglevel": {
             const lv = String(args.level ?? "");
             if (!["debug", "info", "warn", "error"].includes(lv)) throw new Error("invalid level");

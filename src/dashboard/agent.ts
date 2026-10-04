@@ -18,7 +18,8 @@ JSON：{"tool":"health"} / {"tool":"errors","limit":20} / {"tool":"isolate","nam
 - {"tool":"extensions"} 获取扩展列表及状态
 - {"tool":"ext_toggle","name":"扩展名","enabled":true} 启用/禁用扩展
 - {"tool":"bridge","on":true} 开关 Bridge
-- {"tool":"channels"} 获取信道列表
+- {"tool":"channels"} 获取信道列表（含类型、网关地址、延迟、AI 配对状态）
+- {"tool":"gateway"} 获取网关连接详情（管道状态、延迟、信道数）
 - {"tool":"loglevel","level":"debug|info|warn|error"} 调整日志级别
 
 规则：
