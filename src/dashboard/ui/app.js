@@ -1167,10 +1167,10 @@ const SettingsModal = {
             <button data-v="github">GitHub<span class="seg-sub">国外服务器</span></button>
           </div></div>
           <div class="gw-deploy-grid">
-            <div class="field span2"><label>服务器 IP</label><input id="gw-ip" class="mono" spellcheck="false" placeholder="23.251.34.248"></div>
+            <div class="field"><label>服务器 IP</label><input id="gw-ip" class="mono" spellcheck="false" placeholder="23.251.34.248"></div>
             <div class="field"><label>SSH 端口</label><input id="gw-sshport" class="mono" inputmode="numeric" placeholder="22"></div>
             <div class="field"><label>用户名</label><input id="gw-user" class="mono" spellcheck="false" placeholder="root"></div>
-            <div class="field span2"><label>密码</label><input id="gw-pass" type="password" placeholder="只用于本次连接，不保存"></div>
+            <div class="field"><label>密码</label><input id="gw-pass" type="password" placeholder="只用于本次连接，不保存"></div>
           </div>
           <details class="gw-adv"><summary>自定义部署命令（选填，会覆盖上面的字段）</summary>
             <div class="field" style="margin-top:8px"><textarea id="gw-custom-cmd" rows="2" class="mono" spellcheck="false" placeholder="空着用系统内置命令"></textarea></div>

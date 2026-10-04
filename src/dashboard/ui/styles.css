@@ -556,7 +556,7 @@ canvas.chart { width: 100%; display: block; }
 }
 
 /* 一键部署表单 */
-.gw-deploy-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 10px; }
+.gw-deploy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
 .gw-deploy-grid .span2 { grid-column: span 2; }
 .gw-deploy-grid .field { margin-bottom: 8px; }
 .gw-adv { margin: 2px 0 4px; }
