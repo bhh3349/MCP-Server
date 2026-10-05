@@ -45,6 +45,7 @@
     "longDescription": "MCP-Server: complete local MCP system — full PC control, tools, plugins, skills, connectors.",
     "resources": [
       "../dist",
+      "../node_modules",
       "node-bin"
     ],
     "shortDescription": "MCP-Server 桌面控制中心",
