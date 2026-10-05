@@ -1,6 +1,6 @@
 /**
  * File tools: bounded reads, atomic writes, listing, hashing.
- * All paths are resolved against MCP_SERVER_ROOT (default: cwd).
+ * 全机可访问：不做 jail（Bo 明确要求整机控制）。
  * Writes are atomic (temp file + rename) with optional SHA-256 precondition.
  *
  * 错误一律带错误码前缀，便于调用方分支处理（测试报告 P1）：
@@ -14,20 +14,17 @@
 import { promises as fs } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
-import { join, resolve, relative, sep } from "node:path";
+import { join, resolve, relative, sep, parse } from "node:path";
 import { z } from "zod";
 
-const ROOT = resolve(process.env.MCP_SERVER_ROOT || process.cwd());
-
+// 文件工具不再 jail：持有 channel token 即控制整机（exec 本来就不 jail），
+// 限制文件工具只会添堵。Bo 明确要求整机可访问。
 function safePath(p: string): string {
-  const abs = resolve(ROOT, p);
-  const rel = relative(ROOT, abs);
-  if (rel.startsWith("..") || abs === ROOT.replace(/[/\\]$/, "")) {
-    // allow ROOT itself for listing; block escapes
-    if (rel.startsWith("..")) throw new Error(`path escapes root: ${p}`);
-  }
-  return abs;
+  return resolve(p);
 }
+
+// 显示用：取相对路径（不再做 jail 检查）
+const ROOT = parse(process.cwd()).root;
 
 /** 把常见 fs 错误码翻译成带错误码前缀的 Error（测试报告 P1：错误面结构化） */
 function fsError(e: unknown, path: string): Error {

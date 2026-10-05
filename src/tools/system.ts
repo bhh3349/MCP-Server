@@ -68,7 +68,7 @@ export async function serverInfo() {
     },
     sandbox: {
       fileToolsRoot: "MCP_SERVER_ROOT (default: process cwd)",
-      fileToolsJailed: true,
+      fileToolsJailed: false,
       execJailed: false,
       note: "exec runs arbitrary shell commands: whoever holds the channel URL/token controls the host",
     },
