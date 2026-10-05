@@ -48,6 +48,8 @@ export class Bridge extends EventEmitter {
   private manualClose = false;
   /** 该 Bridge 承载的信道 bindingId 列表，心跳时上报 */
   private channelIds = new Set<string>();
+  /** 最后收到网关消息的时间戳，用于检测半开连接 */
+  private lastMsgAt = 0;
 
   constructor(private opts: BridgeOptions) {
     super();
@@ -105,8 +107,17 @@ export class Bridge extends EventEmitter {
     this.reconnectAttempts = 0;
 
     // 心跳：每 30s 上报一次，携带本 Bridge 上的全部信道
+    // 同时检测半开连接：若 2 个心跳周期无任何消息，判定连接已死，主动重连
     const hb = this.opts.heartbeatMs ?? HEARTBEAT_INTERVAL_MS;
+    this.lastMsgAt = Date.now();
     this.heartbeatTimer = setInterval(() => {
+      if (Date.now() - this.lastMsgAt > hb * 2) {
+        // 半开连接：ping 发出去了但没有任何回包（含 pong）
+        console.warn(`[bridge] 连接疑似半开（${Math.round((Date.now() - this.lastMsgAt) / 1000)}s 无消息），主动重连`);
+        this.emit("stale");
+        try { this.ws?.terminate(); } catch { /* ignore */ }
+        return;
+      }
       this.send(
         JSON.stringify({
           type: "ping",
@@ -189,6 +200,7 @@ export class Bridge extends EventEmitter {
   private wire(ws: WebSocket): void {
     ws.removeAllListeners("message");
     ws.on("message", (buf) => {
+      this.lastMsgAt = Date.now();
       this.emit("message", buf.toString("utf-8"));
     });
   }

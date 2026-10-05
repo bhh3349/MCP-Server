@@ -61,7 +61,9 @@ export class LocalChannelServer {
   private building: Promise<void> | null = null;
   /** URL token：不可猜， unknown 路径直接 404。可用 MCP_LOCAL_TOKEN 固定（32 位 hex） */
   private readonly urlToken: string;
-  private activeSessions = new Set<string>();
+  /** 活跃会话：sessionId → 最后活跃时间戳。30 分钟无活动自动回收（防客户端崩溃锁死） */
+  private activeSessions = new Map<string, number>();
+  private sessionGcTimer: ReturnType<typeof setInterval> | null = null;
   private aiName: string | null = null;
   /**
    * 当前 transport 是否曾经开过会话。
@@ -112,7 +114,7 @@ export class LocalChannelServer {
       const transport = new WebStandardStreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (id) => {
-          this.activeSessions.add(id);
+          this.activeSessions.set(id, Date.now());
           this.transportHadSession = true;
         },
         onsessionclosed: (id) => {
@@ -133,6 +135,24 @@ export class LocalChannelServer {
 
   async start(): Promise<LocalChannelInfo> {
     await this.buildTransport();
+
+    // 会话 GC：每 5 分钟检查，30 分钟无活动的会话自动回收
+    // （防客户端崩溃未发 DELETE 导致信道永久锁死）
+    this.sessionGcTimer = setInterval(() => {
+      const now = Date.now();
+      const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+      for (const [id, lastAt] of this.activeSessions) {
+        if (now - lastAt > IDLE_TIMEOUT_MS) {
+          console.warn(`[local-channel] 会话 ${id.slice(0, 8)}… 空闲超 30 分钟，自动回收`);
+          this.activeSessions.delete(id);
+          // 通知 transport 关闭该会话（如果 SDK 支持）
+          try {
+            (this.transport as any)?.closeSession?.(id);
+          } catch { /* ignore */ }
+        }
+      }
+    }, 5 * 60 * 1000);
+    if (this.sessionGcTimer.unref) this.sessionGcTimer.unref();
 
     this.http = createServer((req, res) => {
       this.handle(req, res).catch((e) => {
@@ -178,6 +198,10 @@ export class LocalChannelServer {
     // 无会话 ID 的 POST：只有旧 transport 已"用废"（开过会话、现无活跃）
     // 或 transport 不存在时才重建。全新 transport 直接复用，不浪费预建。
     const sessionId = req.headers["mcp-session-id"];
+    if (typeof sessionId === "string" && this.activeSessions.has(sessionId)) {
+      // 更新会话活跃时间
+      this.activeSessions.set(sessionId, Date.now());
+    }
     if (!sessionId && req.method === "POST" && (!this.transport || (this.transportHadSession && this.activeSessions.size === 0))) {
       await this.buildTransport();
     }
@@ -212,6 +236,10 @@ export class LocalChannelServer {
   }
 
   async stop(): Promise<void> {
+    if (this.sessionGcTimer) {
+      clearInterval(this.sessionGcTimer);
+      this.sessionGcTimer = null;
+    }
     await new Promise<void>((resolve) => {
       if (!this.http) return resolve();
       this.http.close(() => resolve());
