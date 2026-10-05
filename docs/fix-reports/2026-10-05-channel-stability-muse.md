@@ -68,6 +68,7 @@ this.heartbeatTimer = setInterval(() => {
 - AI 重连（配对）成功时清除 `aiLostAt`
 - 定时 GC：`waiting` 状态且 `aiLostAt` 超 5 分钟 → `closeChannel(ch, "ai_grace_expired")`
 - 新增关闭原因 `"ai_grace_expired"`
+- `GatewayOptions` 新增 `aiDisconnectGraceMs` 可配（默认 5 分钟），与 `disconnectGraceMs` 风格一致
 
 ## 验证
 
