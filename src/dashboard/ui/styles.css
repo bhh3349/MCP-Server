@@ -51,6 +51,7 @@
 [data-theme="light"] #modal-overlay, [data-theme="light"] #cmdk-overlay { background: rgba(0,0,0,.35); }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
+html { outline: none; border: none; }
 body {
   background: #060607; color: var(--text);
   font-family: var(--font-ui); font-size: 13px;
@@ -58,6 +59,7 @@ body {
   /* 固定尺寸桌面程序：1440×900 画布居中，不随浏览器窗口重排 */
   display: flex; align-items: center; justify-content: center;
   min-width: 1440px; min-height: 900px;
+  outline: none; border: none; margin: 0;
 }
 .mono { font-family: var(--font-m); }
 .hidden { display: none !important; }
@@ -133,6 +135,11 @@ input, select, textarea { font-family: inherit; }
   height: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
   padding: 0 20px; border-bottom: 1px solid var(--border);
 }
+.app-brand { display: none; align-items: center; gap: 8px; margin-right: 16px; }
+html.tauri .app-brand { display: flex; }
+.brand-icon { width: 20px; height: 20px; }
+.brand-name { font-weight: 700; font-size: 13px; color: var(--text); }
+.brand-ver { font-size: 11px; color: var(--text3); font-family: var(--font-m); }
 .crumb { font-size: 13px; color: var(--text2); display: flex; align-items: center; gap: 6px; }
 .crumb-pre { color: var(--text3); }
 .crumb-sep { color: var(--text3); }
