@@ -8,6 +8,10 @@
 //! 4. 进程退出时回收 sidecar。
 //!
 //! Node 查找顺序：环境变量 MCP_NODE > 安装包内 node-bin/ > PATH 上的 node。
+//! sidecar 查找顺序：resources/sidecar/sidecar.cjs（打包版，自带依赖）> dist/local/cli.js（dev）。
+
+// release 版编译为 GUI 子系统，避免启动时弹出控制台黑窗（dev 保留控制台便于看日志）。
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::net::TcpStream;
 use std::path::{Path, PathBuf};
@@ -38,6 +42,8 @@ fn cli_candidates(base: &Path) -> Vec<PathBuf> {
     let c = vec![
         // 安装包：resources/dist/local/cli.js
         base.join("dist").join("local").join("cli.js"),
+        // 带 `..` 的 resource 会被 Tauri 重命名为 _up_
+        base.join("_up_").join("dist").join("local").join("cli.js"),
         // dev：resource_dir 指向 src-tauri 时
         base.join("..").join("dist").join("local").join("cli.js"),
         // 备选：直接在 base 下找
@@ -107,34 +113,72 @@ fn workdir_for(cli_js: &Path) -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
 }
 
-fn spawn_sidecar(app: &tauri::AppHandle) -> Option<Child> {
+/// 解析要运行的 sidecar 脚本及其工作目录。
+/// - 打包版：resources/sidecar/sidecar.cjs（esbuild 单文件，自带全部依赖），
+///   工作目录取同目录，UI 与 extensions 也在其中。
+/// - dev / 旧包：dist/local/cli.js，工作目录取项目根，走脚本同级 ui/。
+struct SidecarTarget {
+    script: PathBuf,
+    workdir: PathBuf,
+    ui_dir: Option<PathBuf>,
+    ext_dir: Option<PathBuf>,
+}
+
+fn resolve_sidecar_target(app: &tauri::AppHandle) -> Option<SidecarTarget> {
+    let resource_dir = app.path().resource_dir().unwrap_or_else(|_| PathBuf::from("."));
+    log_to_file(&format!("resource_dir: {}", resource_dir.display()));
+
+    // 打包版：resources/sidecar/（稳定布局，无 `..` → 无 _up_ 转义问题）
+    let bundled = resource_dir.join("sidecar").join("sidecar.cjs");
+    if bundled.is_file() {
+        let dir = bundled.parent()?.to_path_buf();
+        log_to_file(&format!("发现打包 sidecar: {}", bundled.display()));
+        return Some(SidecarTarget {
+            script: bundled,
+            workdir: dir.clone(),
+            ui_dir: Some(dir.join("ui")),
+            ext_dir: Some(dir.join("extensions")),
+        });
+    }
+
+    // 回退：dist/local/cli.js（dev 或旧安装包）
     let cli_js = match resolve_cli_js(app) {
         Some(p) => p,
         None => {
-            log_to_file("ERROR: 找不到 cli.js");
+            log_to_file("ERROR: 找不到 sidecar.cjs / cli.js");
             return None;
         }
     };
-    let resource_dir = app.path().resource_dir().unwrap_or_else(|_| PathBuf::from("."));
-    log_to_file(&format!("resource_dir: {}", resource_dir.display()));
-    let node = resolve_node(&resource_dir);
     let workdir = workdir_for(&cli_js);
+    Some(SidecarTarget { script: cli_js, workdir, ui_dir: None, ext_dir: None })
+}
+
+fn spawn_sidecar(app: &tauri::AppHandle) -> Option<Child> {
+    let target = resolve_sidecar_target(app)?;
+    let resource_dir = app.path().resource_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let node = resolve_node(&resource_dir);
 
     log_to_file(&format!("node: {}", node.display()));
-    log_to_file(&format!("cli: {}", cli_js.display()));
-    log_to_file(&format!("cwd: {}", workdir.display()));
+    log_to_file(&format!("cli: {}", target.script.display()));
+    log_to_file(&format!("cwd: {}", target.workdir.display()));
     eprintln!("[tauri] node: {}", node.display());
-    eprintln!("[tauri] cli:  {}", cli_js.display());
-    eprintln!("[tauri] cwd:  {}", workdir.display());
+    eprintln!("[tauri] cli:  {}", target.script.display());
+    eprintln!("[tauri] cwd:  {}", target.workdir.display());
 
     let mut cmd = Command::new(&node);
-    cmd.arg(&cli_js)
+    cmd.arg(&target.script)
         .arg("--dashboard")
         .env("DASHBOARD_PORT", DASHBOARD_PORT.to_string())
-        .current_dir(&workdir)
+        .current_dir(&target.workdir)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
+    if let Some(ui) = &target.ui_dir {
+        cmd.env("MCP_UI_DIR", ui);
+    }
+    if let Some(ext) = &target.ext_dir {
+        cmd.env("MCP_EXTENSIONS_DIR", ext);
+    }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -143,10 +187,12 @@ fn spawn_sidecar(app: &tauri::AppHandle) -> Option<Child> {
     }
     match cmd.spawn() {
         Ok(child) => {
+            log_to_file(&format!("sidecar pid={}", child.id()));
             eprintln!("[tauri] sidecar pid={}", child.id());
             Some(child)
         }
         Err(e) => {
+            log_to_file(&format!("sidecar 启动失败: {e}"));
             eprintln!("[tauri] sidecar 启动失败: {e}");
             None
         }
@@ -198,6 +244,7 @@ fn main() {
             // 后台线程拉起 sidecar，避免阻塞主线程
             std::thread::spawn(move || {
                 let child = spawn_sidecar(&handle);
+                let spawned = child.is_some();
                 if let Some(c) = child {
                     if let Some(s) = handle.try_state::<Sidecar>() {
                         if let Ok(mut g) = s.0.lock() {
@@ -205,8 +252,11 @@ fn main() {
                         }
                     }
                 }
-                if let Some(s) = handle.try_state::<Sidecar>() {
-                    wait_ready(&s);
+                // sidecar 都没起来就别空等 60s，直接放行让窗口显示（由前端提示错误）
+                if spawned {
+                    if let Some(s) = handle.try_state::<Sidecar>() {
+                        wait_ready(&s);
+                    }
                 }
                 if let Some(w) = handle.get_webview_window("main") {
                     let _ = w.show();
@@ -214,6 +264,21 @@ fn main() {
                 }
             });
             Ok(())
+        })
+        // 等比缩放：16:10，拖动时按宽度算高度
+        .on_window_event(|win, event| {
+            if let tauri::WindowEvent::Resized(size) = event {
+                const RATIO: f64 = 1440.0 / 900.0;
+                let w = size.width as f64;
+                let h = (w / RATIO).round() as u32;
+                // 避免无限循环：只有高度偏差超过 2px 才调整
+                if (size.height as i32 - h as i32).abs() > 2 {
+                    let _ = win.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+                        width: size.width,
+                        height: h,
+                    }));
+                }
+            }
         })
         .build(tauri::generate_context!())
         .expect("tauri 启动失败")

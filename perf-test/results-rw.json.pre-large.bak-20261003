@@ -1,0 +1,102 @@
+{
+  "suite": "mcp read/write capability",
+  "date": "2026-10-03",
+  "time_zone": "Asia/Shanghai",
+  "channel_url": "http://192.168.1.10:64722/mcp/6db67e8271f1484e7e0f3d00bec20644",
+  "server_info": { "name": "mcp-server", "version": "0.1.0", "actual_business_name": "UNCONFIRMED" },
+  "host": {
+    "hostname": "TOP-091508N04",
+    "platform": "win32/x64",
+    "os_product": "Windows",
+    "cpu": "12th Gen Intel Core i5-12400F, 12 logical CPUs",
+    "ram_mb": 16177,
+    "powershell": "5.1.28000.2952",
+    "node": "v22.23.2",
+    "server_root": "C:\\BHH\\MCP-Server"
+  },
+  "method": [
+    "local independent sha256 of the exact literal bytes (printf | sha256sum)",
+    "server receipt hash returned by write_file (bytes + sha256)",
+    "on-disk hash by two independent implementations: file_hash (MCP) and Get-FileHash (PowerShell)",
+    "read-back content comparison via read_file",
+    "negative cases: wrong expectedHash, out-of-root paths, directory paths, missing paths"
+  ],
+  "write_cases": [
+    { "path": "perf-test/rw/lf.txt", "bytes": 17, "sha256": "4fdbc441ea7b546100e086ac1e4fc5ae6749b7314311c99db05be450eca12996", "local_match": true },
+    { "path": "perf-test/rw/crlf.txt", "bytes": 8, "sha256": "c3f9c8c283a2b1f2f1896f27a01cbe3cddc0c9d93f752e4639035a0f5b36f6e8", "local_match": false, "note": "CR lost in client-side tool-call serialization; equals sha256 of LF variant; not a server defect" },
+    { "path": "perf-test/rw/nonl.txt", "bytes": 24, "sha256": "bb3082b8d80ddb3160a72646a899f922935b32a50c7371550613aece6f6a73e2", "local_match": true },
+    { "path": "perf-test/rw/cjk.txt", "bytes": 44, "sha256": "fa7df2f1ffc3bfbe05ea8b51c3658c93f02039ec94b94efbf178a939348eb7a0", "local_match": true },
+    { "path": "perf-test/rw/empty.txt", "bytes": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", "local_match": true },
+    { "path": "perf-test/rw/deep/a/b/c.txt", "bytes": 5, "sha256": "64896f89fd11190013b70103e603a1c5826e56b7fb7d2197ab279b0690043599", "local_match": true, "note": "missing parent directories auto-created" },
+    { "path": "perf-test/rw/cas.txt", "bytes": 7, "sha256": "486ddc9b815696f89348e2d57f09aaba5f265c4c2691a354892d750b2ac492ef", "local_match": true, "note": "unchanged after a rejected CAS write" },
+    { "path": "perf-test/rw/crlf2.txt", "bytes": 10, "sha256": "6f4792b265fe72790b344fd3ef5294701d9d087bed9fce815c0f4bbad6d2ed87", "local_match": true, "hex": "6f 6e 65 0d 0a 74 77 6f 0d 0a", "note": "CRLF preserved byte-exact" },
+    { "path": "perf-test/rw/lf2.txt", "bytes": 8, "sha256": "c3f9c8c283a2b1f2f1896f27a01cbe3cddc0c9d93f752e4639035a0f5b36f6e8", "local_match": true, "hex": "6f 6e 65 0a 74 77 6f 0a" },
+    { "path": "perf-test/rw/mix.txt", "bytes": 9, "sha256": "01d51db6c53828452bdbc06268f0000891729ab0bd8d743998cc7f14dc6fa7db", "local_match": true, "hex": "61 0d 0a 62 0a 63 0d 0a 64", "note": "mixed CRLF/LF preserved byte-exact" },
+    { "path": "perf-test/rw/bom.txt", "bytes": 8, "sha256": "7f8b1909a6e752d7b93b41dd59ca74ada67968e15a24832eb8fe0c58f7ae75ef", "local_match": true, "hex": "ef bb bf 61 6c 70 68 61", "note": "UTF-8 BOM preserved" },
+    { "path": "perf-test/rw/bom-copy.txt", "bytes": 8, "sha256": "7f8b1909a6e752d7b93b41dd59ca74ada67968e15a24832eb8fe0c58f7ae75ef", "local_match": true },
+    { "path": "perf-test/rw/page30.txt", "bytes": 231, "sha256": "a328ec5f9c28d95bf62c6d4376a2fef757d00f158bc7b1d2776ec200d5429ead", "local_match": true },
+    { "path": "perf-test/rw/big-1mb.bin", "bytes": 1048576, "sha256": "68363f11dba58b158e9ea2ef283e59ccc6e1f6788d347be36ea814e7e315f3e4", "local_match": "cross-check: file_hash == Get-FileHash" },
+    { "path": "perf-test/rw/abs-inside.txt", "bytes": 4, "sha256": "dae00478f0c0251654a6fddfaebb26c12136cb630a9811d07cfe2e0f144e18c7", "local_match": true, "note": "absolute path inside root accepted" },
+    { "path": "perf-test/rw/cas2.txt", "bytes": 9, "sha256": "060f3f47ca946cea63c9183170cf7ae521aeee7dbc913d1785f06da075a49138", "local_match": true, "note": "CAS winner, content winner-A" },
+    { "path": "perf-test/rw/missing-precondition.txt", "bytes": 17, "sha256": "2ab0b7decc9b5ee8c45c778c8638c55b86011e04a90506a68efffe2114949f6b", "local_match": true, "note": "missing file treated as empty content" },
+    { "path": "perf-test/escape-attempt.txt", "bytes": 4, "sha256": "4bafe3aef45e40ddbe9a8bf31f1ada8adbc6df72769c3abc930f1baea750c917", "local_match": true, "note": "in-root dot-dot normalization, NOT an escape; C:\\BHH has 0 escape files" }
+  ],
+  "read_cases": [
+    { "path": "perf-test/rw/crlf2.txt", "totalLines": 3, "content_repr": "one\\r\\ntwo\\r\\n", "truncated": false, "verdict": "CRLF returned verbatim, no normalization" },
+    { "path": "perf-test/rw/mix.txt", "totalLines": 4, "content_repr": "a\\r\\nb\\nc\\r\\nd", "truncated": false, "verdict": "mixed newlines preserved" },
+    { "path": "perf-test/rw/cas2.txt", "totalLines": 2, "content_repr": "winner-A\\n", "truncated": false },
+    { "path": "perf-test/rw/page30.txt", "offset": 0, "limit": 10, "totalLines": 31, "content_repr": "line 1..line 10", "truncated": true },
+    { "path": "perf-test/rw/page30.txt", "offset": 10, "limit": 10, "totalLines": 31, "content_repr": "line 11..line 20", "truncated": true, "verdict": "pages concatenate with no gap and no overlap" },
+    { "path": "perf-test/rw/page30.txt", "offset": 20, "limit": 10, "totalLines": 31, "content_repr": "line 21..line 30", "truncated": true },
+    { "path": "perf-test/rw/page30.txt", "offset": 100, "limit": 10, "totalLines": 31, "content_repr": "", "truncated": false, "verdict": "past EOF returns empty and truncated=false" },
+    { "path": "perf-test/rw/big-1mb.bin", "limit": 2, "totalLines": 4095, "content": "lossy UTF-8 decoding, U+FFFD replacement chars", "truncated": true, "verdict": "text-only channel; binary is lossy" },
+    { "path": "perf-test/rw/empty.txt", "totalLines": 1, "content_repr": "", "truncated": false }
+  ],
+  "read_semantics": {
+    "offset": "0-based line offset",
+    "limit": "maximum number of lines (tool declares <= 2000)",
+    "totalLines": "number of segments split by \\n; a trailing newline adds one empty segment",
+    "truncated": "true iff more content remains after the returned page"
+  },
+  "bom_behavior": {
+    "disk_bytes": "ef bb bf 61 6c 70 68 61",
+    "decoder_without_bom_detection": "first char code 65279 (U+FEFF), char length 6",
+    "decoder_with_bom_detection": "first char code 97 ('a'), char length 5",
+    "read_file_observation": "a leading extra code point appears before 'alpha'",
+    "uncertainty": "read_file returns text with no byte view, so this code point could NOT be asserted at byte level through that API; library-level corroboration only",
+    "engineering_rule": "assume read content may start with U+FEFF; use file_hash when bytes matter"
+  },
+  "cas_semantics": {
+    "is_real_precondition": true,
+    "stale_error_example": "Error: stale-file: expected 000000000000..., got 486ddc9b8156...",
+    "stale_write_touched_file": false,
+    "missing_file_equals_empty": true,
+    "create_if_absent_recipe": "write_file(new_path, content, expectedHash=sha256(\"\")=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855)",
+    "contention_result": "exactly one winner, no lost update; loser sees the fresh hash",
+    "contention_caveat": "foreground tool calls are serialized by this client, so this was SEQUENTIAL contention; true parallel contention untested"
+  },
+  "sandbox": {
+    "root": "C:\\BHH\\MCP-Server",
+    "relative_dotdot_within_root": "allowed (normalized)",
+    "dotdot_escaping_root": "rejected: path escapes root",
+    "absolute_inside_root": "allowed",
+    "absolute_outside_root": "rejected: path escapes root",
+    "directory_read": "EISDIR",
+    "missing_path_hash": "ENOENT",
+    "file_tools_confined_to_root": true,
+    "exec_sandboxed": false
+  },
+  "security_correction": {
+    "retracted": "unrestricted file read/write on the host via the file tools",
+    "corrected": "read_file/write_file/file_hash are confined to C:\\BHH\\MCP-Server; out-of-root paths are rejected",
+    "still_true": "the pairing code still grants full host control, because exec runs arbitrary PowerShell with no sandbox",
+    "applies_to": ["perf-test/report.md section 10"]
+  },
+  "limitations": [
+    "true concurrent write_file atomicity and CAS mutual exclusion untested (foreground calls are serialized)",
+    "large write_file payloads not tested (bounded by the agent context budget); the 1 MiB file was generated server-side, not through write_file",
+    "no long-run stability, file-handle leak, or >1 MiB paging test",
+    "NTFS read-only / locked / permission-denied error surfaces untested",
+    "BOM code point could not be asserted at byte level through the read_file API"
+  ]
+}

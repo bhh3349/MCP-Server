@@ -1,0 +1,98 @@
+{
+  "meta": {
+    "server": "mcp-server v0.1.0",
+    "endpoint": "http://192.168.1.10:64722/mcp/6db67e8271f1484e7e0f3d00bec20644",
+    "host": "TOP-091508N04",
+    "os": "win32 x64",
+    "cpu": "12th Gen Intel(R) Core(TM) i5-12400F",
+    "logical_cores": 12,
+    "ram_mb": 16177,
+    "powershell": "5.1.28000.2952",
+    "node": "v22.23.2",
+    "timezone": "China Standard Time (+08:00)",
+    "measured_at": "2026-10-03T20:54:00+08:00..2026-10-03T21:01:00+08:00",
+    "method": "server-side self-timestamped logs; concurrency = max interval overlap (sweep line)",
+    "clock_note": "all durations computed from remote clock only; cross-clock skew ~1s magnitude"
+  },
+  "foreground_serialization": {
+    "batch": "6 x exec(Start-Sleep 2)",
+    "dispatch_mode": "foreground, same batch",
+    "first_start": "2026-10-03T20:54:32.1418854+08:00",
+    "last_end": "2026-10-03T20:54:45.6386687+08:00",
+    "span_sec": 13.497,
+    "max_concurrent_overlap": 1,
+    "requested_concurrency": 6,
+    "inter_call_gaps_sec": [0.26, 0.233, 0.26, 0.26, 0.26],
+    "per_call_service_sec": [2.028, 2.038, 2.047, 2.04, 2.036, 2.035],
+    "sequential_control_span_sec": [12.096, 12.111],
+    "verdict": "fully serialized; nominally-parallel batch was 1.4s SLOWER than true serial"
+  },
+  "fixed_cost_breakdown": {
+    "idle_mcp_roundtrip_ms": "47-50",
+    "idle_rtt_evidence": "20 background dispatches completed within 0.948s",
+    "powershell_cold_start_sec": 0.118,
+    "powershell_spawn_samples_sec": [0.134, 0.111, 0.115, 0.115, 0.116],
+    "cmd_exe_spawn_sec": 0.009,
+    "completed_call_floor_sec": 0.275,
+    "probe_intervals_sec": [0.29, 0.264, 0.272, 0.274, 0.275, 0.281, 0.267],
+    "measurement_pitfall": "Start-Process -Wait reported 1.029s for the same spawn; that is tooling overhead, not real cost"
+  },
+  "mixed_overlap_proof": {
+    "description": "one 8s background exec in flight while 9 foreground calls were served",
+    "bg_start": "2026-10-03T20:56:17.2220172+08:00",
+    "bg_end": "2026-10-03T20:56:25.2518417+08:00",
+    "bg_span_sec": 8.03,
+    "fg_after_bg_dispatch": "2026-10-03T20:56:17.2580187+08:00",
+    "fg_latency_after_bg_dispatch_sec": 0.036,
+    "all_probes_before_bg_end": true,
+    "last_probe_minus_bg_start_sec": 2.235
+  },
+  "background_concurrency": {
+    "run_6x3s": {
+      "dispatched": 6,
+      "start_spread_sec": 0.11,
+      "span_sec": 3.146,
+      "max_concurrent_overlap": 6,
+      "requested_concurrency": 6,
+      "speedup_vs_serial": 5.72,
+      "per_task_dur_sec": [3.05, 3.049, 3.039, 3.042, 3.046, 3.036]
+    },
+    "run_20x8s": {
+      "dispatched": 20,
+      "rejected": 0,
+      "start_spread_sec": 0.948,
+      "span_sec": 8.987,
+      "max_concurrent_overlap": 20,
+      "requested_concurrency": 20,
+      "serial_equivalent_sec": 161.344,
+      "parallelism_factor": 17.95,
+      "per_task_dur_min_sec": 8.03,
+      "per_task_dur_max_sec": 8.106,
+      "queueing_degradation": "none (dur flat across all 20)"
+    }
+  },
+  "data_plane": {
+    "write_file_1168B": {"ok": true, "sha256": "dea5e81b51fc28abc4405368a5e984701e4050c6c93256500eb3011ef972eacf"},
+    "write_file_4672B": {"ok": true, "sha256": "d9f43338bee4ed33d769e8cd8835b5956e99f764e8837fc12eb0ad03ce9b7f2b", "reverified_by_file_hash": true},
+    "read_file_paging": "line-based (offset/limit/totalLines/truncated), NOT byte-range",
+    "local_disk_write_1MB_sec": 0.003,
+    "local_disk_write_MBps": 305.7,
+    "local_sha256_1MB_sec": 0.057,
+    "payload_tests_capped_reason": "large read-back payloads consume the caller's context budget"
+  },
+  "session_evidence": {
+    "uptimeSec_earlier": 830,
+    "uptimeSec_later": 912,
+    "delta_sec": 82,
+    "verdict": "same live session throughout"
+  },
+  "caveats": [
+    "client-side cross-message timing is invalid (model inference latency dominates); all numbers are server-side",
+    "payload limited to 1KB/4KB because read-back consumes caller context",
+    "no long-run stability / leak test",
+    "attribution of serialization to the caller layer is evidence-based inference, not line-by-line proof",
+    "20 concurrent is a verified lower bound, not a ceiling",
+    "clocks only coarsely aligned"
+  ],
+  "security": "This endpoint grants arbitrary PowerShell exec and unrestricted file read/write as the remote user. The pairing code is equivalent to full host control; treat it as a secret."
+}

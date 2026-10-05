@@ -790,12 +790,33 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
     wss.handleUpgrade(req, socket, head, (ws) => bridgeSshTerminal(ws, cfg));
   });
 
-  const port = opts.port ?? parseInt(process.env["DASHBOARD_PORT"] ?? "18789", 10);
+  const basePort = opts.port ?? parseInt(process.env["DASHBOARD_PORT"] ?? "18789", 10);
   const host = opts.host ?? process.env["DASHBOARD_HOST"] ?? "127.0.0.1";
-  await new Promise<void>((resolve, reject) => {
-    server.on("error", reject);
-    server.listen(port, host, () => resolve());
-  });
+  let port = basePort;
+  // 端口被占用时自动尝试下一个（最多试 10 个）
+  for (let i = 0; i < 10; i++) {
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const onError = (e: NodeJS.ErrnoException) => {
+          server.off("error", onError);
+          reject(e);
+        };
+        server.on("error", onError);
+        server.listen(port, host, () => {
+          server.off("error", onError);
+          resolve();
+        });
+      });
+      break;
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException)?.code;
+      if (code === "EADDRINUSE" && i < 9) {
+        port = basePort + i + 1;
+        continue;
+      }
+      throw e;
+    }
+  }
 
   logStore.add({ level: "info", source: "dashboard", text: `dashboard API 已启动 http://${host}:${port}` });
   return { port, url: `http://${host}:${port}` };

@@ -1,0 +1,6 @@
+Hello from Muse via the new gateway!
+
+配对码: PnMpBKXERRWK
+时间: 2026-10-04
+
+这条消息是通过 HTTP 配对 → MCP 代理链路写入的。

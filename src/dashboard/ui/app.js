@@ -83,12 +83,16 @@ function gwDeployCommand() {
 }
 /** 读取 SSH 表单（密码只留内存，不持久化） */
 function readSshCfg() {
-  const num = (v, d) => (/^\d{1,5}$/.test(v.trim()) ? parseInt(v.trim(), 10) : d);
+  const num = (v, d) => (/^\d{1,5}$/.test(String(v).trim()) ? parseInt(String(v).trim(), 10) : d);
+  const val = (id, def) => {
+    const el = $(id);
+    return el ? el.value.trim() || def : (localStorage.getItem("ssh_" + id.slice(1)) || def);
+  };
   return {
-    host: $("#gw-ip").value.trim() || "23.251.34.248",
-    sshPort: num($("#gw-sshport").value, 22),
-    username: $("#gw-user").value.trim() || "root",
-    password: $("#gw-pass").value,
+    host: val("#gw-ip", "23.251.34.248"),
+    sshPort: num($("#gw-sshport")?.value ?? localStorage.getItem("ssh_gw-sshport") ?? "22", 22),
+    username: val("#gw-user", "root"),
+    password: val("#gw-pass", "")
   };
 }
 /** 一键部署网关：经 SSH 在服务器上执行，后台轮询输出 */
@@ -388,8 +392,42 @@ function renderCmdk(q) {
     else navTo("channels");
   }));
 }
-$("#cmdk-btn").addEventListener("click", openCmdk);
-$("#term-btn")?.addEventListener("click", () => openSshTerminal());
+$("#cmdk-btn")?.addEventListener("click", openCmdk);
+$("#term-btn")?.addEventListener("click", async () => {
+  try { await openSshTerminal(); }
+  catch(e) { console.error("[term]", e); toast(String(e.message || e), false); }
+});
+// 每个页面的终端按钮（动态注入的 .page-term-btn）
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest?.(".page-term-btn");
+  if (btn) {
+    try { await openSshTerminal(); }
+    catch(err) { console.error("[term]", err); toast(String(err.message || err), false); }
+  }
+});
+// 给每个页面头注入终端按钮
+function injectPageTermBtns() {
+  const btnHTML = '<button class="icon-btn mono page-term-btn" title="终端" style="margin-right:8px">&gt;_</button>';
+  // sec-head：在标题后、操作区前插入
+  document.querySelectorAll(".sec-head").forEach(head => {
+    if (head.querySelector(".page-term-btn")) return;
+    const title = head.querySelector(".sec-title");
+    if (title) {
+      title.insertAdjacentHTML("afterend", btnHTML);
+      head.style.display = "flex";
+      head.style.alignItems = "center";
+    } else {
+      // 没有标题的，直接 prepend
+      head.insertAdjacentHTML("afterbegin", btnHTML);
+    }
+  });
+}
+// 页面切换后重新注入
+const _origShowPage = window.showPage;
+if (typeof _origShowPage === "function") {
+  window.showPage = function(...a) { const r = _origShowPage.apply(this, a); setTimeout(injectPageTermBtns, 50); return r; };
+}
+setTimeout(injectPageTermBtns, 500);
 $("#cmdk-overlay").addEventListener("click", (e) => { if (e.target.id === "cmdk-overlay") closeCmdk(); });
 $("#cmdk-input").addEventListener("input", (e) => renderCmdk(e.target.value));
 document.addEventListener("keydown", (e) => {
@@ -509,7 +547,10 @@ const Overview = {
     return `
     <div class="ov-head">
       <div class="ov-title-row"><span class="ov-eyebrow lang-en">SYSTEM PULSE</span><span class="ov-title lang-zh">运行概况</span></div>
-      <div class="live-pill"><span class="dot green pulse"></span>LIVE</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="icon-btn mono page-term-btn" title="终端">&gt;_</button>
+        <div class="live-pill"><span class="dot green pulse"></span>LIVE</div>
+      </div>
     </div>
     <div class="ov-top">
       <div class="card mcpcore">
@@ -580,7 +621,7 @@ const Overview = {
       </div>
       <div class="card chat-card">
         <div class="chat-head">
-          <div class="chat-avatar" id="chat-avatar">🤖</div>
+          <div class="chat-avatar" id="chat-avatar"><img src="/vendor/providers/longcat.png" alt="" style="width:100%;height:100%;object-fit:cover"></div>
           <div><div class="tp-title"><span class="lang-zh">监控助手</span><span class="lang-en">Assistant</span></div><div class="chat-sub"><span class="dot green pulse"></span><span id="chat-status"><span class="lang-zh">在线</span><span class="lang-en">Online</span></span></div></div>
         </div>
         <div class="inner-box">
@@ -646,7 +687,7 @@ const Overview = {
     const chatMsgs = $("#chat-msgs");
     const chatInput = $("#chat-input");
     const chatStatus = $("#chat-status");
-    // 根据模型供应商自动换头像（内置图标）
+        // 根据模型名称自动换头像（longcat 优先，避免 URL 中的 openai 误判）
     const refreshAvatar = async () => {
       try {
         const ps = await api("/api/agent/providers").catch(() => []);
@@ -654,29 +695,28 @@ const Overview = {
         const av = $("#chat-avatar");
         if (!av || !active) return;
         const name = (active.name || "").toLowerCase();
-        const url = (active.baseUrl || "").toLowerCase();
-        const hay = name + " " + url;
+        // 先按名称匹配（longcat 优先）
         const map = [
-          [["anthropic", "claude"], "anthropic.png"],
-          [["openai", "gpt"], "openai.png"],
-          [["deepseek"], "deepseek.png"],
-          [["moonshot", "kimi"], "moonshot.png"],
-          [["zhipu", "glm"], "zhipuai.png"],
-          [["qwen", "tongyi", "aliyun"], "tongyi.png"],
-          [["doubao", "volc"], "doubao.png"],
-          [["longcat"], "longcat.png"],
+          ["longcat", "longcat.png"],
+          ["anthropic", "claude", "anthropic.png"],
+          ["openai", "gpt", "openai.png"],
+          ["deepseek", "deepseek.png"],
+          ["moonshot", "kimi", "moonshot.png"],
+          ["zhipu", "glm", "zhipuai.png"],
+          ["qwen", "tongyi", "aliyun", "tongyi.png"],
+          ["doubao", "volc", "doubao.png"],
         ];
-        let icon = "";
-        for (const [keys, file] of map) {
-          if (keys.some((k) => hay.includes(k))) { icon = file; break; }
+        let icon = "longcat.png";
+        for (const entry of map) {
+          const file = entry[entry.length - 1];
+          const keys = entry.slice(0, -1);
+          if (keys.some((k) => name.includes(k))) { icon = file; break; }
         }
-        if (icon) {
-          av.innerHTML = `<img src="vendor/providers/${icon}" alt="" onerror="this.parentElement.textContent='🤖'">`;
-        }
+        av.innerHTML = `<img src="/vendor/providers/${icon}" alt="" style="width:100%;height:100%;object-fit:cover">`;
       } catch { /* 保持默认 */ }
     };
     refreshAvatar();
-    const addMsg = (role, text) => {
+const addMsg = (role, text) => {
       const d = document.createElement("div");
       d.className = `chat-msg ${role}`;
       if (role === "user") d.textContent = text;
@@ -1610,7 +1650,7 @@ const SettingsModal = {
       api("/api/approvals").catch(() => []),
     ]);
     if (h?.logLevel) $("#cs-loglevel")?._setVal(h.logLevel);
-    $("#app-version").textContent = `v${ov?.version || "0.1.0"}`;
+    $("#app-version").textContent = `v${ov?.version || "0.1.2"}`;
     $$("#perm-seg button").forEach((x) => x.classList.toggle("active", x.dataset.v === (m?.mode || "approval")));
     const pend = apList.filter((a) => a.status === "pending");
     $("#perm-summary").innerHTML = pend.length ? `${pend.length} <span class='lang-zh'>个待审批</span><span class='lang-en'>pending</span>` : "<span class='lang-zh'>暂无待审批</span><span class='lang-en'>No pending</span>";
@@ -1711,11 +1751,23 @@ const PAGES = {
   try {
     if (window.__TAURI__) {
       document.documentElement.classList.add("tauri");
-      const { getCurrentWindow } = await import("@tauri-apps/api/window");
-      const win = getCurrentWindow();
-      $("#win-min")?.addEventListener("click", () => win.minimize());
-      $("#win-max")?.addEventListener("click", () => win.toggleMaximize());
-      $("#win-close")?.addEventListener("click", () => win.close());
+      let win = null;
+      try {
+        const api = await import("@tauri-apps/api/window");
+        win = api.getCurrentWindow();
+      } catch {
+        // 静态页面无打包器时走 Tauri 注入的全局对象（withGlobalTauri）
+        if (window.__TAURI__.window) {
+          win = window.__TAURI__.window.getCurrentWindow();
+        }
+      }
+      if (win) {
+        $("#win-min")?.addEventListener("click", async () => { try { await win.minimize(); } catch(e){ console.error(e); } });
+        $("#win-max")?.addEventListener("click", async () => { try { await win.toggleMaximize(); } catch(e){ console.error(e); } });
+        $("#win-close")?.addEventListener("click", async () => { try { await win.close(); } catch(e){ console.error(e); } });
+      } else {
+        console.error("[tauri] 无法获取窗口对象");
+      }
     }
   } catch { /* 浏览器环境，忽略 */ }
   try {

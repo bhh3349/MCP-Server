@@ -2,3 +2,9 @@ node_modules/
 dist/
 *.log
 **/config.json
+
+# 构建产物（可再生，勿提交）
+src-tauri/target/
+src-tauri/gen/
+src-tauri/sidecar/
+release/

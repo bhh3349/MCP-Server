@@ -1,6 +1,6 @@
 [package]
 name = "mcp-server"
-version = "0.1.0"
+version = "0.1.2"
 description = "MCP-Server 桌面控制中心"
 authors = ["bhh3349"]
 edition = "2021"
