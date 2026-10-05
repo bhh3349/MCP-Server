@@ -23,14 +23,30 @@ const POLL_INTERVAL: Duration = Duration::from_millis(400);
 
 struct Sidecar(Mutex<Option<Child>>);
 
+fn log_to_file(msg: &str) {
+    if let Ok(mut p) = std::env::temp_dir().canonicalize() {
+        p.push("mcp-server-tauri.log");
+        use std::io::Write;
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&p) {
+            let _ = writeln!(f, "[{}] {}", chrono::Local::now().format("%H:%M:%S"), msg);
+        }
+    }
+}
+
 /// 在 `base` 下按 Tauri resources 布局 / dev 布局找 cli.js
 fn cli_candidates(base: &Path) -> Vec<PathBuf> {
-    vec![
-        // 安装包：resources/dist/local/cli.js（resources: ["../dist/**"] 归一化后）
+    let c = vec![
+        // 安装包：resources/dist/local/cli.js
         base.join("dist").join("local").join("cli.js"),
         // dev：resource_dir 指向 src-tauri 时
         base.join("..").join("dist").join("local").join("cli.js"),
-    ]
+        // 备选：直接在 base 下找
+        base.join("local").join("cli.js"),
+    ];
+    for p in &c {
+        log_to_file(&format!("检查: {} 存在={}", p.display(), p.is_file()));
+    }
+    c
 }
 
 /// dev 模式：从可执行文件向上找到 src-tauri，再取项目根 dist/
@@ -92,11 +108,21 @@ fn workdir_for(cli_js: &Path) -> PathBuf {
 }
 
 fn spawn_sidecar(app: &tauri::AppHandle) -> Option<Child> {
-    let cli_js = resolve_cli_js(app)?;
+    let cli_js = match resolve_cli_js(app) {
+        Some(p) => p,
+        None => {
+            log_to_file("ERROR: 找不到 cli.js");
+            return None;
+        }
+    };
     let resource_dir = app.path().resource_dir().unwrap_or_else(|_| PathBuf::from("."));
+    log_to_file(&format!("resource_dir: {}", resource_dir.display()));
     let node = resolve_node(&resource_dir);
     let workdir = workdir_for(&cli_js);
 
+    log_to_file(&format!("node: {}", node.display()));
+    log_to_file(&format!("cli: {}", cli_js.display()));
+    log_to_file(&format!("cwd: {}", workdir.display()));
     eprintln!("[tauri] node: {}", node.display());
     eprintln!("[tauri] cli:  {}", cli_js.display());
     eprintln!("[tauri] cwd:  {}", workdir.display());
