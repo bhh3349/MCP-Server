@@ -40,6 +40,7 @@ export interface GatewayOptions {
   /** 心跳超时/宽限可覆盖（测试用） */
   heartbeatTimeoutMs?: number;
   disconnectGraceMs?: number;
+  aiDisconnectGraceMs?: number;
   sweepIntervalMs?: number;
 }
 
@@ -116,6 +117,7 @@ export class GatewayServer {
   private readonly tokens: Set<string>;
   private readonly heartbeatTimeoutMs: number;
   private readonly disconnectGraceMs: number;
+  private readonly aiDisconnectGraceMs: number;
 
   private channels = new Map<string, Channel>();
   private byPairingCode = new Map<string, string>();
@@ -135,6 +137,7 @@ export class GatewayServer {
     this.tokens = new Set(opts.tokens ?? []);
     this.heartbeatTimeoutMs = opts.heartbeatTimeoutMs ?? HEARTBEAT_TIMEOUT_MS;
     this.disconnectGraceMs = opts.disconnectGraceMs ?? DISCONNECT_GRACE_MS;
+    this.aiDisconnectGraceMs = opts.aiDisconnectGraceMs ?? AI_DISCONNECT_GRACE_MS;
     this.metrics = {
       startTime: Date.now(),
       mcpConnections: 0,
@@ -991,7 +994,7 @@ export class GatewayServer {
         this.closeChannel(ch, "grace_expired");
       }
       // AI 断开 5 分钟未重连 → 关闭信道
-      if (ch.state === "waiting" && ch.aiLostAt !== null && now - ch.aiLostAt > AI_DISCONNECT_GRACE_MS) {
+      if (ch.state === "waiting" && ch.aiLostAt !== null && now - ch.aiLostAt > this.aiDisconnectGraceMs) {
         this.closeChannel(ch, "ai_grace_expired");
       }
     }
