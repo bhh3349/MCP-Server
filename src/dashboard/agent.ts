@@ -65,6 +65,8 @@ const TOOL_RE = /\{\s*"tool"\s*:\s*"([^"]+)"[^}]*\}/;
 const LONGCAT_RE = /<longcat_tool_call>\s*([a-z_]+)\s*(?:\n([\s\S]*?))?<\/longcat_\w+>/;
 
 /** 从模型输出里提取工具调用，支持 JSON 和 LongCat 两种格式 */
+const KNOWN_TOOLS = ["health", "tool_stats", "errors", "isolate", "restore", "extensions", "ext_toggle", "bridge", "channels", "gateway", "loglevel"];
+
 function parseToolCall(out: string): { tool: string; args: Record<string, unknown>; strip: RegExp } | null {
   const jm = out.match(TOOL_RE);
   if (jm) {
@@ -82,6 +84,11 @@ function parseToolCall(out: string): { tool: string; args: Record<string, unknow
       try { args = JSON.parse(argText) as Record<string, unknown>; } catch { /* ignore */ }
     }
     return { tool: lm[1], args, strip: LONGCAT_RE };
+  }
+  // 兜底：纯工具名（如模型只输出 "channels"）
+  const bare = out.trim().toLowerCase();
+  if (KNOWN_TOOLS.includes(bare)) {
+    return { tool: bare, args: {}, strip: new RegExp(`^${bare}$`, "i") };
   }
   return null;
 }

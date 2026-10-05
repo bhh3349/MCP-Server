@@ -165,14 +165,26 @@ fn spawn_sidecar(app: &tauri::AppHandle) -> Option<Child> {
     eprintln!("[tauri] cli:  {}", target.script.display());
     eprintln!("[tauri] cwd:  {}", target.workdir.display());
 
+    // sidecar 的 stdout/stderr 落到日志文件，否则它崩溃时无迹可查
+    let sidecar_log = std::env::temp_dir().join("mcp-server-sidecar.log");
+    log_to_file(&format!("sidecar 日志: {}", sidecar_log.display()));
+    let out = std::fs::OpenOptions::new().create(true).append(true).open(&sidecar_log).ok();
+    let err = out.as_ref().and_then(|f| f.try_clone().ok());
+
     let mut cmd = Command::new(&node);
     cmd.arg(&target.script)
         .arg("--dashboard")
         .env("DASHBOARD_PORT", DASHBOARD_PORT.to_string())
         .current_dir(&target.workdir)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
+        .stdin(Stdio::null());
+    match out {
+        Some(f) => { cmd.stdout(Stdio::from(f)); }
+        None => { cmd.stdout(Stdio::null()); }
+    }
+    match err {
+        Some(f) => { cmd.stderr(Stdio::from(f)); }
+        None => { cmd.stderr(Stdio::null()); }
+    }
     if let Some(ui) = &target.ui_dir {
         cmd.env("MCP_UI_DIR", ui);
     }
@@ -212,8 +224,9 @@ fn wait_ready(sidecar: &Sidecar) -> bool {
         }
         if let Ok(mut g) = sidecar.0.lock() {
             if let Some(c) = g.as_mut() {
-                if let Ok(Some(_)) = c.try_wait() {
-                    eprintln!("[tauri] sidecar 已退出，停止等待");
+                if let Ok(Some(status)) = c.try_wait() {
+                    log_to_file(&format!("sidecar 已退出: {status}"));
+                    eprintln!("[tauri] sidecar 已退出: {status}，停止等待");
                     return false;
                 }
             }
@@ -237,6 +250,10 @@ fn kill_sidecar(app: &tauri::AppHandle) {
 }
 
 fn main() {
+    // GUI 子系统没有控制台，Rust 侧 panic 默认看不到，写进日志
+    std::panic::set_hook(Box::new(|info| {
+        log_to_file(&format!("PANIC: {info}"));
+    }));
     tauri::Builder::default()
         .manage(Sidecar(Mutex::new(None)))
         .setup(|app| {
