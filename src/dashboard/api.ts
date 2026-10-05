@@ -95,9 +95,16 @@ const MIME: Record<string, string> = {
 };
 
 function uiDir(): string {
-  // tsx: src/dashboard/ui；tsc: dist/dashboard/ui（构建时复制）
-  const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "ui");
+  // 打包后由 Tauri 注入 MCP_UI_DIR（指向 sidecar/ui）；dev/tsc 走脚本同级 ui/。
+  const envDir = process.env["MCP_UI_DIR"];
+  if (envDir) return normalize(envDir);
+  try {
+    const url = import.meta.url;
+    if (url) return join(dirname(fileURLToPath(url)), "ui");
+  } catch {
+    // CJS bundle：无 import.meta.url，回退到工作目录下的 ui/
+  }
+  return join(process.cwd(), "ui");
 }
 
 function json(res: ServerResponse, data: unknown, status = 200): void {

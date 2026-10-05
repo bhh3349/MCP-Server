@@ -18,11 +18,23 @@ Tauri 窗口 (1440x900, 无边框, 自定义标题栏)
 
 ```bash
 npm install
-npm run build          # 生成 dist/（会被打进安装包）
 npm run tauri:build    # 生成安装包：src-tauri/target/release/bundle/nsis/
 ```
 
 产物：`MCP-Server_0.1.0_x64-setup.exe`（当前用户安装，无需管理员）。
+
+`tauri:build` 会先跑 `npm run build:sidecar`，把后端打成一个自包含文件：
+
+```
+src-tauri/sidecar/sidecar.cjs   # esbuild 单文件（含 ws/zod/SDK/ssh2 等全部运行时依赖）
+src-tauri/sidecar/ui/           # 控制中心静态文件
+src-tauri/sidecar/extensions/   # 插件 / 技能 / 连接器
+```
+
+这三者随 `bundle.resources` 一起安装，运行时 Rust 后端用安装包内的
+`node-bin/node.exe` 拉起 `sidecar/sidecar.cjs --dashboard`。
+**注意**：不能再让 sidecar 依赖 `dist/`——tsc 产物不含 `node_modules`，
+装到用户机器上会因找不到模块立即崩溃。
 
 `npm run tauri:dev` 用于开发调试（用项目根 dist/ 直跑）。
 
