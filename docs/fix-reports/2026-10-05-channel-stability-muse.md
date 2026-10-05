@@ -1,10 +1,15 @@
-# 2026-10-05 稳定性修复：信道半开检测 + 会话 GC + 助手工具兜底
+# 2026-10-05 稳定性修复：信道半开检测 + 会话 GC + 助手工具兜底 + 断线宽限期
 
 ## 背景
 
 四路 AI 压测（2026-10-05）发现两个严重稳定性问题：
 1. 网关信道闲置 30-40 分钟后永久挂死（0 字节响应，不自愈）
 2. 客户端异常退出后本地信道会话永久锁死（`Server already initialized`）
+
+Bo 明确断线宽限期策略：
+- MCP 侧断线：15 分钟内重连信道不关闭
+- AI 侧断线：5 分钟内重连信道不关闭
+- 超时后信道关闭，配对码失效
 
 ## 修复 1：Bridge 半开连接检测
 
@@ -48,6 +53,21 @@ this.heartbeatTimer = setInterval(() => {
 **问题**：LongCat 模型直接输出裸工具名（如 `channels`）而不按 JSON/标签格式，`parseToolCall` 识别失败，助手只回显工具名不执行。
 
 **修复**：`parseToolCall` 增加兜底——若输出 trim 后恰好是已知工具名，直接视为无参工具调用。
+
+## 修复 4：断线宽限期（Bo 明确策略）
+
+**文件**：`src/gateway/protocol.ts`、`src/gateway/server.ts`
+
+**策略**：
+- MCP 侧断线：15 分钟内重连，信道不关闭（`DISCONNECT_GRACE_MS` 从 10 分钟改为 15 分钟）
+- AI 侧断线：5 分钟内重连，信道不关闭（新增 `AI_DISCONNECT_GRACE_MS`）
+- 超时后信道关闭，配对码失效
+
+**实现**：
+- `Channel` 新增 `aiLostAt` 时间戳，AI 断开时记录
+- AI 重连（配对）成功时清除 `aiLostAt`
+- 定时 GC：`waiting` 状态且 `aiLostAt` 超 5 分钟 → `closeChannel(ch, "ai_grace_expired")`
+- 新增关闭原因 `"ai_grace_expired"`
 
 ## 验证
 

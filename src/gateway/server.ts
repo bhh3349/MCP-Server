@@ -23,6 +23,7 @@ import {
   PAIRING_TTL_MS,
   HEARTBEAT_TIMEOUT_MS,
   DISCONNECT_GRACE_MS,
+  AI_DISCONNECT_GRACE_MS,
   SWEEP_INTERVAL_MS,
   MAX_PAYLOAD_BYTES,
   BACKPRESSURE_HIGH_WATER_BYTES,
@@ -75,6 +76,8 @@ interface Channel {
   aiName: string | null;
   createdAt: number;
   mcpLostAt: number | null;
+  /** AI 断开时间戳（曾 active 后 AI 离开），5 分钟内重连信道保留 */
+  aiLostAt: number | null;
   msgsRouted: number;
 }
 
@@ -660,6 +663,7 @@ export class GatewayServer {
           aiName: null,
           createdAt: now,
           mcpLostAt: null,
+          aiLostAt: null,
           msgsRouted: 0,
         };
         this.channels.set(channelId, ch);
@@ -867,6 +871,8 @@ export class GatewayServer {
     conn.channelId = ch.id;
     conn.aiName = ch.aiName ?? "ai";
     ch.state = ch.mcp ? "active" : "mcp_lost";
+    // AI 重连成功，清除断开时间戳
+    ch.aiLostAt = null;
     this.aiConns.add(conn);
     this.metrics.aiConnections++;
     if (ch.state === "active") this.metrics.channelsActive++;
@@ -886,6 +892,8 @@ export class GatewayServer {
     ch.aiName = null;
     if (ch.state === "active") {
       ch.state = "waiting";
+      // 记录 AI 断开时间，5 分钟内重连可恢复（bearer 仍有效）
+      ch.aiLostAt = Date.now();
       this.metrics.channelsActive--;
     }
     if (ch.mcp) {
@@ -981,6 +989,10 @@ export class GatewayServer {
     for (const ch of this.channels.values()) {
       if (ch.state === "mcp_lost" && ch.mcpLostAt !== null && now - ch.mcpLostAt > this.disconnectGraceMs) {
         this.closeChannel(ch, "grace_expired");
+      }
+      // AI 断开 5 分钟未重连 → 关闭信道
+      if (ch.state === "waiting" && ch.aiLostAt !== null && now - ch.aiLostAt > AI_DISCONNECT_GRACE_MS) {
+        this.closeChannel(ch, "ai_grace_expired");
       }
     }
   }

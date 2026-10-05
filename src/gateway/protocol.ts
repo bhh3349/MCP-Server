@@ -27,7 +27,8 @@ export const TOKEN_RE = /^[0-9a-f]{64}$/;
 export const HEARTBEAT_INTERVAL_MS = 30_000;
 export const HEARTBEAT_TIMEOUT_MS = 90_000;
 /** MCP 断线宽限：10 分钟内重连可无缝恢复，超时信道关闭、配对码作废 */
-export const DISCONNECT_GRACE_MS = 10 * 60 * 1000;
+export const DISCONNECT_GRACE_MS = 15 * 60 * 1000;
+export const AI_DISCONNECT_GRACE_MS = 5 * 60 * 1000;
 /** 存活扫描间隔 */
 export const SWEEP_INTERVAL_MS = 30_000;
 /** 单帧最大载荷 32MB（防内存炸弹；MCP 侧单次读上限 10MB） */
@@ -81,7 +82,8 @@ export type GatewayToAi =
 /** 信道关闭原因 */
 export type ChannelCloseReason =
   | "mcp_closed"      // MCP 主动关闭
-  | "grace_expired"   // MCP 断线超 10 分钟
+  | "grace_expired"   // MCP 断线超 15 分钟
+  | "ai_grace_expired" // AI 断线超 5 分钟
   | "replaced"        // 配对码被 recode 替换（旧码作废，信道本身保留）
   | "ai_gone";        // 预留
 
