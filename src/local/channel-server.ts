@@ -66,6 +66,12 @@ export class LocalChannelServer {
   private sessionGcTimer: ReturnType<typeof setInterval> | null = null;
   private aiName: string | null = null;
   /**
+   * 最后一次有请求进来的时间（含 /healthz 之外的任何命中）。
+   * 供 ChannelManager 判断"这条本地信道还活着吗"——本地信道不产生心跳，
+   * 没有它就只能靠显式 remove() 回收。
+   */
+  private lastActivityAt = Date.now();
+  /**
    * 当前 transport 是否曾经开过会话。
    * 曾经开过、现在又无活跃会话 = transport 已"用废"（SDK 不再接受新会话），
    * 下一个无 session 的 POST 到来时才需要重建。全新 transport 直接复用。
@@ -98,6 +104,11 @@ export class LocalChannelServer {
 
   get connectedAI(): string | null {
     return this.aiName;
+  }
+
+  /** 最后一次请求时间（毫秒时间戳） */
+  get lastActivity(): number {
+    return this.lastActivityAt;
   }
 
   /** 建（或重建）transport + server */
@@ -182,6 +193,9 @@ export class LocalChannelServer {
 
   private async handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+
+    // 任何命中都算活跃（healthz 除外：它是探活用的，不能让探活保住信道）
+    if (url.pathname !== "/healthz") this.lastActivityAt = Date.now();
 
     if (url.pathname === "/healthz") {
       res.writeHead(200, { "Content-Type": "application/json" });

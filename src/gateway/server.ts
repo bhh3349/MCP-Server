@@ -24,11 +24,13 @@ import {
   HEARTBEAT_TIMEOUT_MS,
   DISCONNECT_GRACE_MS,
   AI_DISCONNECT_GRACE_MS,
+  UNPAIRED_GRACE_MS,
   SWEEP_INTERVAL_MS,
   MAX_PAYLOAD_BYTES,
   BACKPRESSURE_HIGH_WATER_BYTES,
   type ChannelCloseReason,
 } from "./protocol.js";
+import { QualityTracker, type ChannelQuality } from "./quality.js";
 
 export interface GatewayOptions {
   port?: number;
@@ -41,7 +43,13 @@ export interface GatewayOptions {
   heartbeatTimeoutMs?: number;
   disconnectGraceMs?: number;
   aiDisconnectGraceMs?: number;
+  /** 配对码有效期（默认 15 分钟） */
+  pairingTtlMs?: number;
+  /** 从未配对的信道：配对码过期后再宽限多久关闭。默认 15 分钟。 */
+  unpairedGraceMs?: number;
   sweepIntervalMs?: number;
+  /** 每个 token 最多可同时持有多少条活跃（未关闭）信道。默认 200。 */
+  maxChannelsPerToken?: number;
 }
 
 export interface GatewayMetrics {
@@ -118,9 +126,15 @@ export class GatewayServer {
   private readonly heartbeatTimeoutMs: number;
   private readonly disconnectGraceMs: number;
   private readonly aiDisconnectGraceMs: number;
+  private readonly unpairedGraceMs: number;
+  private readonly pairingTtlMs: number;
+  /** 每 token 活跃信道配额（防无限建信道） */
+  private readonly maxChannelsPerToken: number;
 
   private channels = new Map<string, Channel>();
   private byPairingCode = new Map<string, string>();
+  /** AI ↔ 网关 信道质量测量（延迟/稳定性，见 quality.ts 的口径说明） */
+  private readonly quality = new QualityTracker();
   private mcpConns = new Set<McpConn>();
   private aiConns = new Set<AiConn>();
   // claim 限流：每 IP 令牌桶（防暴力枚举配对码）
@@ -138,6 +152,9 @@ export class GatewayServer {
     this.heartbeatTimeoutMs = opts.heartbeatTimeoutMs ?? HEARTBEAT_TIMEOUT_MS;
     this.disconnectGraceMs = opts.disconnectGraceMs ?? DISCONNECT_GRACE_MS;
     this.aiDisconnectGraceMs = opts.aiDisconnectGraceMs ?? AI_DISCONNECT_GRACE_MS;
+    this.unpairedGraceMs = opts.unpairedGraceMs ?? UNPAIRED_GRACE_MS;
+    this.pairingTtlMs = opts.pairingTtlMs ?? PAIRING_TTL_MS;
+    this.maxChannelsPerToken = opts.maxChannelsPerToken ?? 200;
     this.metrics = {
       startTime: Date.now(),
       mcpConnections: 0,
@@ -233,6 +250,9 @@ export class GatewayServer {
         ...this.metrics,
         uptimeSec: Math.round((Date.now() - this.metrics.startTime) / 1000),
         channelsTracked: this.channels.size,
+        // AI ↔ 网关 信道质量（延迟/抖动）。第三方网页 AI 不支持 ping/pong，
+        // 所以 pongRate 通常是 null（=未支持），不是 0%。
+        channelQuality: this.qualitySnapshot(),
       }));
       return;
     }
@@ -376,6 +396,25 @@ export class GatewayServer {
     }));
   }
 
+  /**
+   * AI 侧 HTTP 接口的鉴权：必须带该信道签发过的 aiBearer。
+   * 支持两种携带方式：Authorization: Bearer <token>，或查询串/body 里的 bearer 字段
+   * （兼容长轮询场景，某些 HTTP 客户端不便设置请求头）。
+   * 校验用定值时间比较，避免通过响应耗时侧信道枚举 bearer。
+   */
+  private aiAuthorized(ch: Channel | undefined, inlineBearer?: string): ch is Channel {
+    if (!ch || ch.state === "closed" || !ch.aiBearer) return false;
+    return typeof inlineBearer === "string" && this.timingSafeEqual(inlineBearer, ch.aiBearer);
+  }
+
+  /** 定值时间字符串比较（长度不等直接 false） */
+  private timingSafeEqual(a: string, b: string): boolean {
+    if (a.length !== b.length) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return diff === 0;
+  }
+
   /** 取 HTTP 请求的 base URL（http://host:port） */
   private httpBase(req: IncomingMessage): string {
     const host = req.headers.host || "localhost";
@@ -415,6 +454,14 @@ export class GatewayServer {
   private handleAiPoll(url: URL, res: ServerResponse): void {
     const channelId = url.searchParams.get("channelId");
     const ch = channelId ? this.channels.get(channelId) : undefined;
+    // 与 POST /mcp/{id} 对齐：AI 侧 HTTP 接口一律验 bearer。
+    // 此前仅凭 channelId 即可拉取 MCP 回包（含工具执行结果），
+    // 而 channelId 会暴露在 URL / 代理日志 / AI 对话记录里。
+    if (!this.aiAuthorized(ch, url.searchParams.get("bearer") ?? undefined)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
     const conn = ch?.ai;
     if (!ch || !conn || conn.kind !== "http" || conn.closed) {
       res.writeHead(404, { "Content-Type": "application/json" });
@@ -458,6 +505,14 @@ export class GatewayServer {
     const channelId = body?.channelId;
     const data = body?.data;
     const ch = channelId ? this.channels.get(channelId) : undefined;
+    // 与 POST /mcp/{id} 对齐：AI 侧 HTTP 接口一律验 bearer。
+    // 此前仅凭 channelId 就能向 MCP 注入任意 JSON-RPC（等于可下发 exec），
+    // 而同网关的 /mcp/{id} 一直是要 bearer 的 —— 这是不一致，不是设计。
+    if (!this.aiAuthorized(ch, typeof body?.bearer === "string" ? body.bearer : undefined)) {
+      res.writeHead(401, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "unauthorized" }));
+      return;
+    }
     const conn = ch?.ai;
     if (!ch || !conn || conn.kind !== "http" || conn.closed || typeof data !== "string") {
       res.writeHead(404, { "Content-Type": "application/json" });
@@ -478,10 +533,10 @@ export class GatewayServer {
    */
   private async handleMcpProxy(channelId: string, req: IncomingMessage, res: ServerResponse): Promise<void> {
     const ch = this.channels.get(channelId);
-    // 验 bearer
+    // 验 bearer（与 AI 侧 HTTP 接口共用同一套校验）
     const auth = req.headers.authorization || "";
     const bearer = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-    if (!ch || ch.state === "closed" || !ch.aiBearer || bearer !== ch.aiBearer) {
+    if (!this.aiAuthorized(ch, bearer)) {
       res.writeHead(401, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "unauthorized" }));
       return;
@@ -649,6 +704,15 @@ export class GatewayServer {
   private handleMcpMessage(conn: McpConn, msg: any, raw: string): void {
     switch (msg?.type) {
       case "channel.create": {
+        // 配额：每 token 的活跃信道上限，防无限建信道（每条都会占住索引）
+        if (this.activeChannelCount(conn.tokenId) >= this.maxChannelsPerToken) {
+          this.sendMcp(conn, {
+            type: "channel.error",
+            reqId: msg.reqId,
+            reason: `channel limit reached (max ${this.maxChannelsPerToken} per token)`,
+          });
+          return;
+        }
         const channelId = `ch_${randomBytes(9).toString("hex")}`;
         const pairingCode = generatePairingCode();
         const now = Date.now();
@@ -657,7 +721,7 @@ export class GatewayServer {
           name: typeof msg.name === "string" ? msg.name : "channel",
           tokenId: conn.tokenId,
           pairingCode,
-          pairingExpiresAt: now + PAIRING_TTL_MS,
+          pairingExpiresAt: now + this.pairingTtlMs,
           claimedBy: null,
           aiBearer: null,
           state: "waiting",
@@ -708,7 +772,7 @@ export class GatewayServer {
         if (ch.pairingCode) this.byPairingCode.delete(ch.pairingCode);
         const pairingCode = generatePairingCode();
         ch.pairingCode = pairingCode;
-        ch.pairingExpiresAt = Date.now() + PAIRING_TTL_MS;
+        ch.pairingExpiresAt = Date.now() + this.pairingTtlMs;
         this.byPairingCode.set(pairingCode, ch.id);
         this.sendMcp(conn, {
           type: "channel.recoded", reqId: msg.reqId,
@@ -820,6 +884,10 @@ export class GatewayServer {
       switch (msg?.type) {
         case "ping":
           this.sendAi(conn, { type: "pong", ts: msg.ts ?? Date.now() });
+          return;
+        case "pong":
+          // AI 回应了网关的 ping → 计入应答率（第三方网页 AI 不会走到这）
+          this.quality.onPong(conn.channelId ?? "");
           return;
         case "msg":
           // 防串信道：ch 必须与绑定的一致
@@ -943,6 +1011,8 @@ export class GatewayServer {
     this.metrics.msgsRouted++;
     this.metrics.bytesRouted += raw.length;
     ch.msgsRouted++;
+    // 质量打点：MCP 回包到达，结算这条信道的端到端业务延迟
+    this.quality.onMcpResponse(ch.id);
   }
 
   /** AI → MCP：同理 */
@@ -954,6 +1024,8 @@ export class GatewayServer {
       this.closeMcp(mcp, 1013, "slow consumer");
       return;
     }
+    // 质量打点：AI 发起一次请求（回包在 forwardToAi 结算）
+    this.quality.onAiRequest(ch.id);
     mcp.ws.send(raw);
     this.metrics.msgsRouted++;
     this.metrics.bytesRouted += raw.length;
@@ -962,9 +1034,43 @@ export class GatewayServer {
 
   // ------------------------------------------------------------ 存活扫描
 
+  /** 某条信道的 AI 质量快照（延迟/抖动/pong 应答率） */
+  qualityOf(channelId: string): ChannelQuality {
+    return this.quality.snapshot(channelId);
+  }
+
+  /** 所有已配对 AI 的信道质量，信道 id 为键 */
+  qualitySnapshot(): Record<string, ChannelQuality> {
+    const out: Record<string, ChannelQuality> = {};
+    for (const ch of this.channels.values()) {
+      if (ch.ai) out[ch.id] = this.quality.snapshot(ch.id);
+    }
+    return out;
+  }
+
   /** 单一定时器：MCP 心跳超时 → mcp_lost；宽限期满 → 关闭信道 */
   private sweep(): void {
     const now = Date.now();
+    // ---- 信道质量：定期给 AI 发 ping（仅对支持的客户端有意义）----
+    // 第三方网页 AI 不回 pong，这里只是"埋好接口"：一旦有客户端支持，
+    // 应答率自动就有值，不会显示成虚假的 0%。不发也不计入分母。
+    for (const ch of this.channels.values()) {
+      const ai = ch.ai;
+      if (!ai || ai.closed || ai.kind !== "ws") continue;
+      if (!this.quality.dueForPing(ch.id, now)) continue;
+      this.quality.onPingSent(ch.id, now);
+      try {
+        ai.ws?.send(JSON.stringify({ type: "ping", ts: now }));
+      } catch { /* 发送失败下一轮再试 */ }
+    }
+    // 把质量数据推给 MCP（复用既有 MCP 连接，无需 MCP 额外轮询）
+    for (const ch of this.channels.values()) {
+      const mcp = ch.mcp;
+      if (!mcp || mcp.closed || mcp.ws.readyState !== WS_OPEN) continue;
+      try {
+        mcp.ws.send(JSON.stringify({ type: "quality", channelId: ch.id, quality: this.quality.snapshot(ch.id) }));
+      } catch { /* 发送失败下一轮再试 */ }
+    }
     // 慢路径：90s 没收到任何消息也算断线（兜底 TCP 半开）
     for (const conn of [...this.mcpConns]) {
       if (now - conn.lastSeen > this.heartbeatTimeoutMs) {
@@ -992,12 +1098,31 @@ export class GatewayServer {
     for (const ch of this.channels.values()) {
       if (ch.state === "mcp_lost" && ch.mcpLostAt !== null && now - ch.mcpLostAt > this.disconnectGraceMs) {
         this.closeChannel(ch, "grace_expired");
+        continue;
       }
       // AI 断开 5 分钟未重连 → 关闭信道
       if (ch.state === "waiting" && ch.aiLostAt !== null && now - ch.aiLostAt > this.aiDisconnectGraceMs) {
         this.closeChannel(ch, "ai_grace_expired");
+        continue;
+      }
+      // 从未配对过的信道：配对码过期 + 宽限期 → 关闭。
+      // 没有这条规则，"建了信道但没把配对码给 AI"的信道会永久占位：
+      // 它既不是 mcp_lost（MCP 在线），aiLostAt 也永远是 null（AI 从未来过）。
+      if (ch.state === "waiting" && ch.aiLostAt === null && !ch.claimedBy &&
+          now > ch.pairingExpiresAt + this.unpairedGraceMs) {
+        this.closeChannel(ch, "unpaired_expired");
+        continue;
       }
     }
+  }
+
+  /** 某 token 名下未关闭的信道数（配额检查用） */
+  private activeChannelCount(tokenId: string): number {
+    let n = 0;
+    for (const ch of this.channels.values()) {
+      if (ch.tokenId === tokenId && ch.state !== "closed") n++;
+    }
+    return n;
   }
 
   private closeChannel(ch: Channel, reason: ChannelCloseReason): void {
@@ -1020,6 +1145,19 @@ export class GatewayServer {
     ch.ai = null;
     if (wasActive) this.metrics.channelsActive--;
     this.metrics.channelsClosed++;
+    // 从索引里移除，否则 channels Map 只增不减（长期运行内存单调增长）。
+    // 已通知过双端、状态已置 closed，此处删除不影响正确性。
+    this.channels.delete(ch.id);
+    // 同步清理质量采样，否则每条关闭的信道都会在 tracker 里留一份状态（内存泄漏）
+    this.quality.forget(ch.id);
+    // 清理该信道遗留的待回包（POST /mcp/{id} 的 HTTP 代理），避免悬挂 promise
+    for (const [key, p] of this.mcpPending) {
+      if (key.startsWith(`${ch.id}:`)) {
+        clearTimeout(p.timer);
+        p.resolve(JSON.stringify({ jsonrpc: "2.0", id: p.clientId ?? null, error: { code: -32000, message: "channel closed" } }));
+        this.mcpPending.delete(key);
+      }
+    }
   }
 
   // ------------------------------------------------------------ 小工具

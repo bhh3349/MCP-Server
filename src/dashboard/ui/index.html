@@ -8,30 +8,45 @@
 <link rel="apple-touch-icon" href="icons/logo-128.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="vendor/xterm.css">
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("theme")||"dark"}catch(e){}</script>
 <script>try{document.documentElement.dataset.lang=localStorage.getItem("lang")||"zh"}catch(e){}</script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-overview" viewBox="0 0 24 24"><path d="M3 13h6V3H3v10Zm0 8h6v-6H3v6Zm8 0h10V11H11v10Zm0-18v6h10V3H11Z"/></symbol>
+<symbol id="i-channels" viewBox="0 0 24 24"><path d="M4 18a8 8 0 0 1 8-8m8 0a8 8 0 0 0-8-8m4 12a4 4 0 0 1-4 4m-4-16a12 12 0 0 1 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="1.6"/></symbol>
+<symbol id="i-plugins" viewBox="0 0 24 24"><path d="M9 3v4a2 2 0 1 1-4 0V3h4Zm10 0v4a2 2 0 1 0 4 0V3h-4ZM9 21v-4a2 2 0 1 0-4 0v4h4Zm10 0v-4a2 2 0 1 1 4 0v4h-4ZM3 9h4a2 2 0 1 1 0 4H3V9Zm18 0h-4a2 2 0 1 0 0 4h4V9ZM13 11h-2v2h2v-2Z"/></symbol>
+<symbol id="i-skills" viewBox="0 0 24 24"><path d="m12 3 2.1 5.4L19.5 10l-5.4 1.6L12 17l-2.1-5.4L4.5 10l5.4-1.6L12 3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m18.5 16.5.9 2.2 2.1.7-2.1.7-.9 2.2-.9-2.2-2.1-.7 2.1-.7.9-2.2Z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+<symbol id="i-connectors" viewBox="0 0 24 24"><path d="M9.5 14.5 14.5 9.5m-6.2-1.3-1 1a3.5 3.5 0 0 0 5 5l1-1m-5.6 2.2-1 1a3.5 3.5 0 0 0 5 5l1-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+<symbol id="i-tools" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 1 5.3 5.3l-9.9 9.9a2.4 2.4 0 0 1-3.4-3.4l9.9-9.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14.7 6.3 17 4a4 4 0 0 1 2.3 5.6l-2.3 2.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+<symbol id="i-logs" viewBox="0 0 24 24"><path d="M5 4h9M5 9h14M5 14h9M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+<symbol id="i-errors" viewBox="0 0 24 24"><path d="M12 4.5 21 20H3l9-15.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 10v4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1" fill="currentColor"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1M18.7 18.7l-2.1-2.1M7.4 7.4 5.3 5.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+<symbol id="i-terminal" viewBox="0 0 24 24"><path d="m5 8 4 4-4 4m6 0h8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 4.5v15" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11m0-11l-11 11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+</defs></svg>
+
 <div id="app">
   <aside id="sidebar">
     <div class="logo-row">
-      <button id="collapse-btn" title="收起侧边栏" data-title-en="Collapse sidebar">«</button>
+      <button id="collapse-btn" title="收起侧边栏" data-title-en="Collapse sidebar" aria-label="收起侧边栏" aria-expanded="true"><svg class="nav-ico" aria-hidden="true"><use href="#i-panel"/></svg></button>
     </div>
-    <nav id="nav">
-      <button class="nav-item active" data-page="overview"><span class="nav-ico">📊</span><span class="nav-text"><span class="lang-zh">概览</span><span class="lang-en">Overview</span></span></button>
-      <button class="nav-item" data-page="channels"><span class="nav-ico">📡</span><span class="nav-text"><span class="lang-zh">信道</span><span class="lang-en">Channels</span></span><span class="nav-badge" id="badge-channels"></span></button>
-      <button class="nav-item" data-page="plugins"><span class="nav-ico">🧩</span><span class="nav-text"><span class="lang-zh">插件</span><span class="lang-en">Plugins</span></span><span class="nav-badge" id="badge-plugins"></span></button>
-      <button class="nav-item" data-page="skills"><span class="nav-ico">✨</span><span class="nav-text"><span class="lang-zh">技能</span><span class="lang-en">Skills</span></span><span class="nav-badge" id="badge-skills"></span></button>
-      <button class="nav-item" data-page="connectors"><span class="nav-ico">🔗</span><span class="nav-text"><span class="lang-zh">连接器</span><span class="lang-en">Connectors</span></span><span class="nav-badge" id="badge-connectors"></span></button>
-      <button class="nav-item" data-page="tools"><span class="nav-ico">🛠️</span><span class="nav-text"><span class="lang-zh">工具</span><span class="lang-en">Tools</span></span><span class="nav-badge" id="badge-tools"></span></button>
-      <button class="nav-item" data-page="logs"><span class="nav-ico">📝</span><span class="nav-text"><span class="lang-zh">日志</span><span class="lang-en">Logs</span></span></button>
-      <button class="nav-item" data-page="errors"><span class="nav-ico">⚠️</span><span class="nav-text"><span class="lang-zh">错误</span><span class="lang-en">Errors</span></span><span class="nav-badge red" id="badge-errors"></span></button>
+    <nav id="nav" aria-label="主导航">
+      <button class="nav-item active" data-page="overview"><svg class="nav-ico" aria-hidden="true"><use href="#i-overview"/></svg><span class="nav-text"><span class="lang-zh">概览</span><span class="lang-en">Overview</span></span></button>
+      <button class="nav-item" data-page="channels"><svg class="nav-ico" aria-hidden="true"><use href="#i-channels"/></svg><span class="nav-text"><span class="lang-zh">信道</span><span class="lang-en">Channels</span></span><span class="nav-badge" id="badge-channels"></span></button>
+      <button class="nav-item" data-page="plugins"><svg class="nav-ico" aria-hidden="true"><use href="#i-plugins"/></svg><span class="nav-text"><span class="lang-zh">插件</span><span class="lang-en">Plugins</span></span><span class="nav-badge" id="badge-plugins"></span></button>
+      <button class="nav-item" data-page="skills"><svg class="nav-ico" aria-hidden="true"><use href="#i-skills"/></svg><span class="nav-text"><span class="lang-zh">技能</span><span class="lang-en">Skills</span></span><span class="nav-badge" id="badge-skills"></span></button>
+      <button class="nav-item" data-page="connectors"><svg class="nav-ico" aria-hidden="true"><use href="#i-connectors"/></svg><span class="nav-text"><span class="lang-zh">连接器</span><span class="lang-en">Connectors</span></span><span class="nav-badge" id="badge-connectors"></span></button>
+      <button class="nav-item" data-page="tools"><svg class="nav-ico" aria-hidden="true"><use href="#i-tools"/></svg><span class="nav-text"><span class="lang-zh">工具</span><span class="lang-en">Tools</span></span><span class="nav-badge" id="badge-tools"></span></button>
+      <button class="nav-item" data-page="logs"><svg class="nav-ico" aria-hidden="true"><use href="#i-logs"/></svg><span class="nav-text"><span class="lang-zh">日志</span><span class="lang-en">Logs</span></span></button>
+      <button class="nav-item" data-page="errors"><svg class="nav-ico" aria-hidden="true"><use href="#i-errors"/></svg><span class="nav-text"><span class="lang-zh">错误</span><span class="lang-en">Errors</span></span><span class="nav-badge red" id="badge-errors"></span></button>
     </nav>
     <div class="side-foot">
-      <button class="nav-item" id="settings-btn"><span class="nav-ico">⚙</span><span class="nav-text"><span class="lang-zh">设置</span><span class="lang-en">Settings</span></span></button>
+      <button class="nav-item" id="settings-btn"><svg class="nav-ico" aria-hidden="true"><use href="#i-settings"/></svg><span class="nav-text"><span class="lang-zh">设置</span><span class="lang-en">Settings</span></span></button>
     </div>
   </aside>
 

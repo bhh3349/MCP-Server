@@ -35,6 +35,50 @@ export interface JobRecord {
 const jobs = new Map<string, JobRecord>();
 let seq = 0;
 
+/** 已结束的后台作业保留时长：超时自动回收，避免输出缓冲区无界累积 */
+const DONE_JOB_TTL_MS = 5 * 60 * 1000;
+/** 已完成作业最多保留条数（超出即回收最旧的），防止短时大量作业撑爆内存 */
+const MAX_DONE_JOBS = 50;
+/** 单作业输出缓冲区上限：超出丢弃最旧部分，防止 tail -f 类任务无限增长 */
+const MAX_OUTPUT_BYTES = 8 * 1024 * 1024;
+
+let gcTimer: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * 后台作业 GC：定时回收已结束（done/killed）的作业记录。
+ * 此前 jobCleanup 存在但全代码库零调用 —— 每个后台作业的输出会永久驻留，
+ * 长跑时内存单调增长。这里在首次创建作业时装上定时器。
+ */
+function ensureJobGc(): void {
+  if (gcTimer) return;
+  gcTimer = setInterval(() => {
+    const now = Date.now();
+    // 1. 按 TTL 回收已结束的
+    for (const [id, rec] of jobs) {
+      if (!rec.done) continue;
+      if (rec.endedAt !== null && now - rec.endedAt > DONE_JOB_TTL_MS) {
+        jobs.delete(id);
+      }
+    }
+    // 2. 已结束的仍超限 → 回收最旧的
+    let doneCount = 0;
+    for (const rec of jobs.values()) if (rec.done) doneCount++;
+    if (doneCount > MAX_DONE_JOBS) {
+      const doneIds = [...jobs.entries()]
+        .filter(([, r]) => r.done)
+        .sort((a, b) => (a[1].endedAt ?? 0) - (b[1].endedAt ?? 0))
+        .map(([id]) => id);
+      for (const id of doneIds.slice(0, doneCount - MAX_DONE_JOBS)) jobs.delete(id);
+    }
+    // 3. 没有作业了就停掉定时器，避免空转
+    if (jobs.size === 0 && gcTimer) {
+      clearInterval(gcTimer);
+      gcTimer = null;
+    }
+  }, 60_000);
+  if (gcTimer.unref) gcTimer.unref();
+}
+
 function decode(buf: Buffer[]): string {
   return Buffer.concat(buf).toString("utf-8");
 }
@@ -144,9 +188,22 @@ export async function exec(
     waitDone: Promise.resolve(),
   };
   jobs.set(id, rec);
+  ensureJobGc();
 
-  proc.stdout?.on("data", (d: Buffer) => rec.stdout.push(d));
-  proc.stderr?.on("data", (d: Buffer) => rec.stderr.push(d));
+  // 输出缓冲区加上限：只保留最近 MAX_OUTPUT_BYTES，丢弃最旧的块。
+  // 没有这层保护，tail -f / 长压测类任务会把内存吃满。
+  const pushCapped = (arr: Buffer[], d: Buffer): void => {
+    arr.push(d);
+    let total = 0;
+    for (const b of arr) total += b.length;
+    while (total > MAX_OUTPUT_BYTES && arr.length > 1) {
+      const dropped = arr.shift();
+      if (dropped) total -= dropped.length;
+    }
+  };
+
+  proc.stdout?.on("data", (d: Buffer) => pushCapped(rec.stdout, d));
+  proc.stderr?.on("data", (d: Buffer) => pushCapped(rec.stderr, d));
 
   const finished = new Promise<void>((resolve) => {
     proc.on("close", (code, signal) => {

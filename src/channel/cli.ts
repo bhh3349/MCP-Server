@@ -16,7 +16,11 @@ import { ChannelManager } from "./manager.js";
 import { buildServer } from "../server.js";
 import { ToolStats } from "../dashboard/stats.js";
 import { logStore } from "../dashboard/logger.js";
+import { installCrashHandler } from "../dashboard/crashlog.js";
 import { startDashboard } from "../dashboard/api.js";
+
+// 崩溃留痕（交互式 CLI 也装：配对调试时崩了同样要留现场）
+installCrashHandler("channel");
 
 const CONFIG_PATH = join(homedir(), ".mcp-server", "gateways.json");
 

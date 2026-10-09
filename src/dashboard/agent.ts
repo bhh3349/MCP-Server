@@ -13,6 +13,7 @@ JSON：{"tool":"health"} / {"tool":"errors","limit":20} / {"tool":"isolate","nam
 - {"tool":"health"} 获取综合健康状态（工具数、调用统计、最近错误、桥接状态）
 - {"tool":"tool_stats"} 获取各工具调用/错误明细
 - {"tool":"errors","limit":20} 获取最近错误列表
+- {"tool":"crashes","limit":10} 获取落盘记录：进程崩溃快照（含堆栈/内存/死前日志）+ error 时间线，重启后还在。服务崩溃、异常退出后先查这个
 - {"tool":"isolate","name":"工具名"} 隔离故障工具（暂停调用）
 - {"tool":"restore","name":"工具名"} 恢复被隔离的工具
 - {"tool":"extensions"} 获取扩展列表及状态
@@ -65,7 +66,7 @@ const TOOL_RE = /\{\s*"tool"\s*:\s*"([^"]+)"[^}]*\}/;
 const LONGCAT_RE = /<longcat_tool_call>\s*([a-z_]+)\s*(?:\n([\s\S]*?))?<\/longcat_\w+>/;
 
 /** 从模型输出里提取工具调用，支持 JSON 和 LongCat 两种格式 */
-const KNOWN_TOOLS = ["health", "tool_stats", "errors", "isolate", "restore", "extensions", "ext_toggle", "bridge", "channels", "gateway", "loglevel"];
+const KNOWN_TOOLS = ["health", "tool_stats", "errors", "crashes", "isolate", "restore", "extensions", "ext_toggle", "bridge", "channels", "gateway", "loglevel"];
 
 function parseToolCall(out: string): { tool: string; args: Record<string, unknown>; strip: RegExp } | null {
   const jm = out.match(TOOL_RE);

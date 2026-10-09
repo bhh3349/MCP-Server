@@ -8,6 +8,11 @@
  */
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { buildServer } from "./server.js";
+import { installCrashHandler } from "./dashboard/crashlog.js";
+
+// 崩溃留痕：stdio 模式由 MCP 客户端拉起，崩溃后客户端只看到管道断开，
+// 落盘快照是唯一能还原现场的手段
+installCrashHandler("stdio");
 
 async function main() {
   const { server } = await buildServer();

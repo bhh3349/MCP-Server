@@ -1,0 +1,61 @@
+name: Build Electron App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build sidecar
+        run: npm run build:sidecar
+
+      - name: Verify sidecar
+        run: |
+          if (-Not (Test-Path "src-tauri/sidecar/sidecar.cjs")) { throw "src-tauri/sidecar/sidecar.cjs not found" }
+          if (-Not (Test-Path "src-tauri/sidecar/ui/index.html")) { throw "src-tauri/sidecar/ui/index.html not found" }
+          if (-Not (Test-Path "src-tauri/node-bin/node.exe")) { throw "src-tauri/node-bin/node.exe not found (portable node missing)" }
+          Get-ChildItem src-tauri/sidecar -Recurse | Measure-Object | Select-Object Count
+        shell: pwsh
+
+      - name: Build Electron app
+        run: npx electron-builder --win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-server-windows-electron
+          path: |
+            release-electron/*.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: mcp-server-windows-electron
+          path: ./artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./artifacts/**/*
+          generate_release_notes: true

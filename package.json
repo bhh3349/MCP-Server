@@ -14,12 +14,14 @@
     "@tauri-apps/cli": "^2.12.1",
     "@types/node": "^22.0.0",
     "@types/ssh2": "^1.15.6",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0"
   },
   "license": "MIT",
-  "main": "dist/index.js",
+  "main": "src-electron/main.cjs",
   "name": "mcp-server",
   "scripts": {
     "build": "tsc && node -e \"require('fs').cpSync('src/dashboard/ui','dist/dashboard/ui',{recursive:true})\"",
@@ -36,7 +38,11 @@
     "dashboard": "tsx src/dashboard/cli.ts",
     "tauri": "npx tauri",
     "tauri:dev": "npx tauri dev",
-    "tauri:build": "npx tauri build"
+    "tauri:build": "npx tauri build",
+    "electron:dev": "node scripts/electron-dev.mjs",
+    "electron:build": "npm run build:sidecar && electron-builder --win",
+    "electron:build:all": "npm run build:sidecar && electron-builder --win --mac --linux",
+    "electron:dist": "electron-builder --win"
   },
   "type": "module",
   "version": "0.1.2"

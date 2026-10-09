@@ -40,6 +40,74 @@ function applyLang() {
   document.title = l === "en" ? "MCP-Server Console" : "MCP-Server 控制中心";
   return l;
 }
+/* ---------- 连接状态机 ----------
+   仪表盘最危险的状态是"看起来一切正常，其实早就断了"。
+   这里把轮询成败显式建模：ok → stale（本次失败但有旧数据）→ offline（连续失败）。
+   连接状态是全局的，所以只发一条横幅 + 整体去饱和，
+   而不是给每张卡挂角标（那会和卡片自身操作区打架）。 */
+const Conn = {
+  failCount: 0, state: "boot",
+  push(ok) {
+    if (ok) this.failCount = 0;
+    else this.failCount++;
+    // 连续 3 次失败才判定 offline：一次网络抖动不该把界面染红
+    this.state = this.failCount === 0 ? "live" : this.failCount >= 3 ? "offline" : "stale";
+    this.render();
+    return this.state;
+  },
+  render() {
+    const pill = document.querySelector(".live-pill");
+    const banner = document.getElementById("conn-banner");
+    if (!pill) return;
+    const map = {
+      boot: ["gray", "正在连接", "Connecting"],
+      live: ["green", "实时", "Live"],
+      stale: ["yellow", "重试中", "Retrying"],
+      offline: ["red", "已断开", "Offline"],
+    };
+    const [dot, zh, en] = map[this.state];
+    pill.innerHTML = `<span class="dot ${dot}${this.state === "live" ? " pulse" : ""}"></span>`
+      + `<span class="lang-zh">${zh}</span><span class="lang-en">${en}</span>`;
+
+    // 横幅只在"需要用户知道"时出现：stale 起显示，live 收起。
+    // 文案说清发生了什么 + 下一步做什么，不道歉、不含糊。
+    if (banner) {
+      const show = this.state === "stale" || this.state === "offline";
+      banner.classList.toggle("is-on", show);
+      banner.classList.toggle("is-bad", this.state === "offline");
+      if (show) {
+        banner.innerHTML = this.state === "offline"
+          ? `<svg class="icon-ico" aria-hidden="true"><use href="#i-errors"/></svg>
+             <span><b><span class="lang-zh">无法连接控制中心后端</span><span class="lang-en">Cannot reach the dashboard backend</span></b>
+             <span class="lang-zh">下方数值是最后一次成功轮询的快照，不再更新。确认 dashboard 进程仍在运行后会自动恢复。</span>
+             <span class="lang-en">The numbers below are the last successful snapshot and no longer update. They recover automatically once the dashboard process is running again.</span></span>`
+          : `<svg class="icon-ico" aria-hidden="true"><use href="#i-errors"/></svg>
+             <span><b><span class="lang-zh">连接不稳定</span><span class="lang-en">Unstable connection</span></b>
+             <span class="lang-zh">正在自动重试，数值暂时可能不是最新的。</span>
+             <span class="lang-en">Retrying automatically; values may be out of date.</span></span>`;
+      }
+    }
+  },
+};
+
+/** 断线后所有数据槽去饱和，明确表示"这些数字不再可信" */
+function markStale(on) {
+  document.querySelectorAll(".staleable").forEach((el) => el.classList.toggle("is-stale", on));
+}
+
+/* ---------- 状态组件 ----------
+   空态不是一句"暂无"，而是一个邀请：说清为什么空 + 给一个能点的下一步。
+   占位符式空态等于把设计决策推给用户。 */
+
+/** 空态：一句话说明为什么空 + 可选的下一步动作 */
+function emptyHTML({ zh, en, action = "", icon = "" }) {
+  return `<div class="state-empty">
+    ${icon ? `<svg class="icon-ico state-empty-ico" aria-hidden="true"><use href="${icon}"/></svg>` : ""}
+    <p class="lang-zh">${zh}</p><p class="lang-en">${en}</p>
+    ${action}
+  </div>`;
+}
+
 async function api(path, opts = {}) {
   const r = await fetch(path, {
     headers: { "Content-Type": "application/json" },
@@ -357,8 +425,16 @@ function navTo(page) {
 $$(".nav-item").forEach((b) => b.addEventListener("click", () => { if (b.dataset.page) navTo(b.dataset.page); }));
 $("#collapse-btn").addEventListener("click", () => {
   const sb = $("#sidebar");
-  sb.classList.toggle("collapsed");
-  $("#collapse-btn").textContent = sb.classList.contains("collapsed") ? "»" : "«";
+  const collapsed = sb.classList.toggle("collapsed");
+  const btn = $("#collapse-btn");
+  btn.setAttribute("aria-expanded", String(!collapsed));
+  // 图标由 CSS 镜像，不换字形；这里只负责把可访问名称跟着状态改对
+  const zh = collapsed ? "展开侧边栏" : "收起侧边栏";
+  const en = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  btn.setAttribute("title", zh);
+  btn.setAttribute("aria-label", zh);
+  btn.dataset.titleEn = en;
+  applyLang();
 });
 
 /* ---------- Cmd+K ---------- */
@@ -392,11 +468,7 @@ function renderCmdk(q) {
     else navTo("channels");
   }));
 }
-$("#cmdk-btn")?.addEventListener("click", openCmdk);
-$("#term-btn")?.addEventListener("click", async () => {
-  try { await openSshTerminal(); }
-  catch(e) { console.error("[term]", e); toast(String(e.message || e), false); }
-});
+// Cmd+K 打开命令面板（键盘入口在下方 keydown 委托里）
 // 每个页面的终端按钮（动态注入的 .page-term-btn）
 document.addEventListener("click", async (e) => {
   const btn = e.target.closest?.(".page-term-btn");
@@ -435,7 +507,13 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") { closeCmdk(); closeModal(); }
 });
 
-/* ---------- 画布图表 ---------- */
+/* ---------- 画布图表 ----------
+   canvas 不能用 CSS 选择器，所以颜色从 token 读取后传给 ctx。
+   写死 rgba(255,255,255,…) 会让图表在亮色主题上直接消失。 */
+function themeColor(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return v || fallback;
+}
 function setupCanvas(cv, h) {
   const dpr = window.devicePixelRatio || 1;
   const w = cv.clientWidth || cv.parentElement.clientWidth;
@@ -456,25 +534,15 @@ function smoothPath(ctx, pts, w, h, max) {
     }
   });
 }
-function drawLineChart(cv, series, colors) {
-  const { ctx, w, h } = setupCanvas(cv, 150);
-  ctx.clearRect(0, 0, w, h);
-  const max = Math.max(10, ...series.flat());
-  series.forEach((pts, si) => {
-    smoothPath(ctx, pts, w, h, max);
-    ctx.strokeStyle = colors[si]; ctx.lineWidth = 2; ctx.stroke();
-    // 面积渐变
-    const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, colors[si] + "44"); g.addColorStop(1, colors[si] + "00");
-    ctx.lineTo(w, h); ctx.lineTo(0, h); ctx.closePath();
-    ctx.fillStyle = g; ctx.fill();
-  });
-}
-function drawSpark(cv, pts, color) {
+/** 概览页轮询间隔（秒）。图表的时间轴刻度依赖它，改这里要同步改这里。 */
+const POLL_SEC = 2;
+
+/** GATEWAY 延迟迷你图：floorMax 由调用方传入近窗峰值，避免每帧重算 max 把涨幅抹平 */
+function drawSpark(cv, pts, color, floorMax) {
   const { ctx, w, h } = setupCanvas(cv, 34);
   ctx.clearRect(0, 0, w, h);
   if (pts.length < 2) return;
-  const max = Math.max(...pts, 1);
+  const max = Math.max(1, floorMax || 0, ...pts);
   smoothPath(ctx, pts, w, h, max);
   ctx.strokeStyle = color; ctx.lineWidth = 1.6; ctx.stroke();
 }
@@ -483,39 +551,50 @@ function drawDonut(rate) {
   if (!arc) return;
   const C = 326.73;
   arc.style.strokeDashoffset = String(C * (1 - rate));
-  arc.style.stroke = rate > 0.95 ? "#4ade80" : rate > 0.8 ? "#facc15" : "#f87171";
+  // 状态色走 token，亮暗主题各自取自己的值
+  arc.style.stroke = rate > 0.95
+    ? themeColor("--st-ok", "#3ecf8e")
+    : rate > 0.8 ? themeColor("--st-warn", "#e0a03a") : themeColor("--st-bad", "#f0656f");
 }
 /* MCP CORE 紫色仪表盘 */
-/* 吞吐：柱状 + 双线 + 坐标轴（图一还原） */
-function drawThroughput(cv, req, ok) {
+/* 吞吐：柱状 + 双线 + 坐标轴
+   Y 轴上限取近 5 分钟的历史峰值（而不是每帧重算 max），
+   否则流量下跌会被自动缩放抹平：100→10 和 1000→100 的形状看起来一样。 */
+function drawThroughput(cv, req, ok, floorMax) {
   const box = cv.closest(".inner-box");
   const H = box ? Math.max(120, box.clientHeight - 40) : 150;
   const { ctx, w, h } = setupCanvas(cv, H);
   ctx.clearRect(0, 0, w, h);
   const padL = 30, padB = 18, padT = 8, cw = w - padL - 8, ch = h - padT - padB;
-  const max = Math.max(10, ...req, ...ok);
+  const max = Math.max(10, floorMax || 0, ...req, ...ok);
   const n = req.length, bw = Math.max(2, (cw / n) * 0.45);
+  const C_GRID = themeColor("--chart-grid", "rgba(255,255,255,.07)");
+  const C_AXIS = themeColor("--chart-axis", "rgba(255,255,255,.22)");
+  const C_TICK = themeColor("--text-3", "#888");
+  const C_REQ = themeColor("--accent", "#8b7cf0");
+  const C_OK = themeColor("--st-ok", "#3ecf8e");
   // 网格 + Y 轴刻度
-  ctx.font = "9px JetBrains Mono, monospace"; ctx.fillStyle = "rgba(255,255,255,.35)";
-  ctx.strokeStyle = "rgba(255,255,255,.07)"; ctx.lineWidth = 1;
+  ctx.font = "9px JetBrains Mono, monospace"; ctx.fillStyle = C_TICK;
+  ctx.strokeStyle = C_GRID; ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const y = padT + (ch / 4) * i, v = Math.round(max * (1 - i / 4));
     ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - 8, y); ctx.stroke();
     ctx.fillText(String(v), 4, y + 3);
   }
   // 坐标轴
-  ctx.strokeStyle = "rgba(255,255,255,.25)"; ctx.lineWidth = 1;
+  ctx.strokeStyle = C_AXIS; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(padL, padT); ctx.lineTo(padL, padT + ch); ctx.stroke(); // Y 轴
   ctx.beginPath(); ctx.moveTo(padL, padT + ch); ctx.lineTo(w - 8, padT + ch); ctx.stroke(); // X 轴
   const X = (i) => padL + (i / (n - 1)) * cw;
   const Y = (v) => padT + ch - (v / max) * ch;
-  // 柱状（请求）
-  ctx.fillStyle = "rgba(139,92,246,.28)";
+  // 请求画柱状，成功画线：两者不再重复画同一组数据，
+  // 之前柱子被线的渐变填充盖住，只剩边缘，既冗余又互相遮挡。
+  ctx.fillStyle = themeColor("--chart-bar", "rgba(139,92,246,.28)");
   req.forEach((v, i) => {
     const bh = (v / max) * ch;
-    ctx.fillRect(X(i) - bw / 2, padT + ch - bh, bw, bh);
+    if (bh > 0) ctx.fillRect(X(i) - bw / 2, padT + ch - bh, bw, bh);
   });
-  // 双线
+  // 成功曲线叠加在柱状上
   const line = (pts, color, fill) => {
     ctx.beginPath();
     pts.forEach((v, i) => { i === 0 ? ctx.moveTo(X(i), Y(v)) : ctx.lineTo(X(i), Y(v)); });
@@ -527,12 +606,15 @@ function drawThroughput(cv, req, ok) {
       ctx.fillStyle = g; ctx.fill();
     }
   };
-  line(req, "#8b5cf6", true);
-  line(ok, "#34d399", false);
-  // X 轴时间
-  ctx.fillStyle = "rgba(255,255,255,.35)";
-  ["-60s", "-40s", "-20s", "NOW"].forEach((t, i) => {
-    ctx.fillText(t, padL + (cw / 3) * i - 8, h - 5);
+  line(req, C_REQ, false);
+  line(ok, C_OK, false);
+  // X 轴时间：按真实点数 × 轮询间隔算跨度，不写死 "-60s/-40s"，
+  // 否则服务刚启动只有几个点时标签就在骗人。
+  const spanSec = Math.max(1, Math.round((n - 1) * POLL_SEC));
+  ctx.fillStyle = C_TICK;
+  [0, 1, 2, 3].forEach((k) => {
+    const t = `-${Math.max(0, spanSec - k * (spanSec / 3))}s`;
+    ctx.fillText(k === 3 ? "NOW" : t, padL + (cw / 3) * k - 8, h - 5);
   });
 }
 
@@ -546,14 +628,15 @@ const Overview = {
   html() {
     return `
     <div class="ov-head">
-      <div class="ov-title-row"><span class="ov-eyebrow lang-en">SYSTEM PULSE</span><span class="ov-title lang-zh">运行概况</span></div>
+      <div class="ov-title-row"><span class="ov-title lang-zh">运行概况</span><span class="ov-title lang-en">Overview</span><span class="hint" id="uptime"></span></div>
       <div style="display:flex;align-items:center;gap:8px">
-        <button class="icon-btn mono page-term-btn" title="终端">&gt;_</button>
-        <div class="live-pill"><span class="dot green pulse"></span>LIVE</div>
+        <button class="icon-btn page-term-btn" title="终端"><svg class="icon-ico" aria-hidden="true"><use href="#i-terminal"/></svg></button>
+        <div class="live-pill" role="status" aria-live="polite"><span class="dot gray pulse"></span><span class="lang-zh">正在连接</span><span class="lang-en">Connecting</span></div>
       </div>
     </div>
+    <div id="conn-banner" class="conn-banner" role="alert" aria-live="assertive"></div>
     <div class="ov-top">
-      <div class="card mcpcore">
+      <div class="card mcpcore staleable">
         <div class="mcpcore-main">
           <div class="ov-eyebrow">MCP CORE <span class="pill green sm" id="ov-mcp-pill"><span class="lang-zh">正常</span><span class="lang-en">OK</span></span></div>
           <div class="mcpcore-status"><span class='lang-zh'>运行中</span><span class='lang-en'>Running</span></div>
@@ -561,22 +644,28 @@ const Overview = {
         </div>
         <div class="mcpcore-gauge">
           <svg viewBox="0 0 92 92" width="84" height="84">
-            <circle cx="46" cy="46" r="38" fill="none" stroke="rgba(139,92,246,.15)" stroke-width="9"/>
-            <circle id="ov-gauge-arc" cx="46" cy="46" r="38" fill="none" stroke="url(#gaugeGrad)" stroke-width="9"
+            <circle cx="46" cy="46" r="38" fill="none" stroke="var(--surface-3)" stroke-width="9"/>
+            <circle id="ov-gauge-arc" cx="46" cy="46" r="38" fill="none" stroke="var(--accent)" stroke-width="9"
               stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="238.76"
               transform="rotate(-90 46 46)" style="transition: stroke-dashoffset .6s ease"/>
-            <defs><linearGradient id="gaugeGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#a78bfa"/>
-            </linearGradient></defs>
           </svg>
           <div class="gauge-label"><b id="ov-health" class="mono">–</b><span><span class="lang-zh">工具健康</span><span class="lang-en">Tool Health</span></span></div>
         </div>
       </div>
-      <div class="card">
+      <div class="card staleable">
         <div class="ov-eyebrow">GATEWAY <span class="pill green sm" id="ov-gw-pill"><span class="lang-zh">已连接</span><span class="lang-en">Connected</span></span></div>
         <div class="stat-num"><span id="ov-lat">–</span><small> ms</small></div>
         <canvas class="spark" id="ov-spark" style="width:100%"></canvas>
         <div class="gw-foot"><span class="hint"><span class="lang-zh">支持自动故障转移</span><span class="lang-en">Auto-failover</span></span><span class="mono hint" id="ov-lat2">– ms</span></div>
+      </div>
+      <div class="card staleable" title="AI 发请求到拿到 MCP 回包的完整往返，由网关测量">
+        <div class="ov-eyebrow">AI <span class="pill gray sm" id="ov-aiq-pill"><span class="lang-zh">待采样</span><span class="lang-en">Sampling</span></span></div>
+        <div class="stat-num"><span id="ov-aiq-lat">–</span><small> ms</small></div>
+        <div class="gw-foot"><span class="hint"><span class="lang-zh">端到端调用延迟</span><span class="lang-en">End-to-end latency</span></span><span class="mono hint" id="ov-aiq-p95">– ms</span></div>
+        <div class="aiq-grid">
+          <div class="aiq-cell"><span class="hint"><span class="lang-zh">抖动</span><span class="lang-en">Jitter</span></span><b class="mono" id="ov-aiq-jitter">–</b></div>
+          <div class="aiq-cell"><span class="hint"><span class="lang-zh">样本</span><span class="lang-en">Samples</span></span><b class="mono" id="ov-aiq-n">–</b></div>
+        </div>
       </div>
       <div class="card">
         <div class="ov-eyebrow">BRIDGE <span class="pill green sm" id="ov-br-pill"><span class="lang-zh">在线</span><span class="lang-en">Online</span></span></div>
@@ -586,16 +675,15 @@ const Overview = {
         </div>
         <div class="br-pipes"><span class="hint" id="ov-pipe-count">– <span class="lang-zh">条管道</span><span class="lang-en">pipes</span></span><div class="pipe-bars" id="ov-pipe-bars"></div></div>
       </div>
-      <div class="card ch-card">
+      <div class="card ch-card staleable">
         <div class="ov-eyebrow"><span class="lang-zh">信道</span><span class="lang-en">Channels</span><span class="hint" style="margin-left:6px"><span id="ov-ch-count">0</span> <span class="lang-zh">个</span></span>
           <button class="text-btn" id="ov-add-ch" style="margin-left:auto"><span class='lang-zh'>添加</span><span class='lang-en'>Add</span></button>
         </div>
-        <div class="ch-list" id="ov-ch-list"><div class="ch-empty"><span class="lang-zh">暂无信道</span><span class="lang-en">No channels</span></div></div>
+        <div class="ch-list" id="ov-ch-list"><div class="state-inline"><span class="lang-zh">正在读取信道列表…</span><span class="lang-en">Reading channels…</span></div></div>
       </div>
     </div>
     <div class="ov-main">
-      <div class="card tp-card">
-        <div class="ov-eyebrow lang-en">DATA THROUGHPUT STREAM</div>
+      <div class="card tp-card staleable">
         <div class="tp-head"><span class="tp-title lang-zh">调用吞吐</span><span class="tp-title lang-en">Throughput</span>
           <span class="tp-legend"><i class="lg-dot" style="background:#8b5cf6"></i><span class="lang-zh">请求</span><span class="lang-en">Req</span> <b class="mono" id="ov-req-min">–</b>/min
           <i class="lg-dot" style="background:#34d399"></i><span class="lang-zh">成功</span><span class="lang-en">OK</span> <b class="mono" id="ov-ok-min">–</b>/min</span>
@@ -607,11 +695,11 @@ const Overview = {
         <div class="tp-stats">
           <span><span class="lang-zh">成功率</span><span class="lang-en">Success</span> <b class="mono" id="ov-tp-rate">–</b></span>
           <span>p50 <b class="mono" id="ov-tp-p50">–</b></span>
+          <span>p95 <b class="mono" id="ov-tp-p95">–</b></span>
           <span><span class="lang-zh">峰值</span><span class="lang-en">Peak</span> <b class="mono" id="ov-tp-peak">–</b>/min</span>
         </div>
       </div>
-      <div class="card rank-card">
-        <div class="ov-eyebrow lang-en">TOOL ACTIVITY</div>
+      <div class="card rank-card staleable">
         <div class="tp-head"><span class="tp-title lang-zh">工具调用排行</span><span class="tp-title lang-en">Tool Rankings</span><span class="hint mono">LIVE · TOP 8</span></div>
         <div class="inner-box">
           <div class="inner-title"><span class="lang-zh">排行</span><span class="lang-en">Rank</span></div>
@@ -638,15 +726,13 @@ const Overview = {
           <button class="chat-send" id="chat-send">↑</button>
         </div>
       </div>
-      <div class="card log-card">
-        <div class="ov-eyebrow lang-en">LIVE EVENT STREAM <span class="live-mini"><span class="dot green pulse"></span>LIVE</span></div>
-        <div class="tp-title lang-zh">实时日志流</div><div class="tp-title lang-en">Live Logs</div>
+      <div class="card log-card staleable">
+        <div class="ov-eyebrow"><span class="dot green pulse"></span><span class="lang-zh">实时日志流</span><span class="lang-en">Live Logs</span></div>
         <div class="log-stream slim" id="ov-logs"></div>
         <div class="log-foot"><span class="hint"><span class="lang-zh">自动滚动</span><span class="lang-en">Auto-scroll</span></span><span class="follow"><span class="dot green"></span><span class="lang-zh">跟随中</span><span class="lang-en">Following</span></span></div>
       </div>
-      <div class="card rel-card">
-        <div class="ov-eyebrow lang-en">RELIABILITY</div>
-        <div class="tp-head"><span class="tp-title lang-zh">调用成功率</span><span class="tp-title lang-en">Success Rate</span><span class="hint mono">60 SEC</span></div>
+      <div class="card rel-card staleable">
+        <div class="tp-head"><span class="tp-title lang-zh">调用成功率</span><span class="tp-title lang-en">Success Rate</span><span class="hint mono" id="ov-rate-span">近 60 秒</span></div>
         <div class="inner-box">
           <div class="rel-top">
             <div class="donut-center">
@@ -760,9 +846,12 @@ const addMsg = (role, text) => {
 
   async refresh() {
     try {
-      const [ov, chs, st] = await Promise.all([
+      const [ov, chs, st, win] = await Promise.all([
         api("/api/overview"), api("/api/channels"), api("/api/stats/tools"),
+        api("/api/stats/window?sec=60").catch(() => null),
       ]);
+      Conn.push(true);
+      markStale(false);
       // ---- MCP CORE ----
       $("#ov-tools").textContent = ov.tools.count;
       $("#badge-tools").textContent = ov.tools.count || "";
@@ -772,7 +861,7 @@ const addMsg = (role, text) => {
       const garc = $("#ov-gauge-arc");
       if (garc) garc.style.strokeDashoffset = String(238.76 * (1 - health));
       $("#ov-health").textContent = `${Math.round(health * 100)}%`;
-      { const _u = $("#uptime"); if (_u) _u.innerHTML = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`; }
+      $("#uptime").innerHTML = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`;
       // ---- 网关延迟 ----
       const pipes = ov.bridge.pipes;
       const lat = pipes.length && pipes[0].avgLatencyMs != null ? pipes[0].avgLatencyMs
@@ -788,7 +877,9 @@ const addMsg = (role, text) => {
       const sparkEl = $("#ov-spark");
       if (latVal != null) {
         this.latHist.push(latVal); if (this.latHist.length > 30) this.latHist.shift();
-        drawSpark(sparkEl, this.latHist, "#4ade80");
+        // sparkline 同样固定 Y 轴：否则延迟翻 10 倍曲线形状不变，只有数字在变
+        this.latPeak = Math.max(this.latPeak || 0, ...this.latHist);
+        drawSpark(sparkEl, this.latHist, "#4ade80", this.latPeak);
         sparkEl.style.opacity = "1";
       } else {
         const { ctx, w, h } = setupCanvas(sparkEl, 34);
@@ -796,6 +887,47 @@ const addMsg = (role, text) => {
         ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.setLineDash([4, 4]);
         ctx.beginPath(); ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2); ctx.stroke();
         ctx.setLineDash([]); sparkEl.style.opacity = ".6";
+      }
+      // ---- AI 端到端质量（网关测量；无样本时如实显示"待采样"，不伪造 0）----
+      // 取所有网关信道里样本最多的那条做代表：样本少的那条数字不可信。
+      const qBest = chs
+        .filter((c) => c.quality && c.quality.samples > 0)
+        .sort((a, b) => b.quality.samples - a.quality.samples)[0];
+      const aiq = qBest?.quality ?? null;
+      const aiqPill = $("#ov-aiq-pill");
+      const aiqLat = $("#ov-aiq-lat");
+      if (!aiq) {
+        if (aiqLat) aiqLat.textContent = "–";
+        const anyActive = chs.some((c) => c.quality?.aiActive);
+        if (aiqPill) {
+          aiqPill.innerHTML = anyActive
+            ? "<span class='lang-zh'>采样中</span><span class='lang-en'>Sampling</span>"
+            : "<span class='lang-zh'>无样本</span><span class='lang-en'>No samples</span>";
+          aiqPill.className = anyActive ? "pill yellow sm" : "pill gray sm";
+        }
+        const j = $("#ov-aiq-jitter"), n = $("#ov-aiq-n"), p95 = $("#ov-aiq-p95");
+        if (j) j.textContent = "–";
+        if (n) n.textContent = "–";
+        if (p95) p95.textContent = "– ms";
+      } else {
+        const lat = aiq.e2eAvgMs;
+        if (aiqLat) aiqLat.textContent = lat != null ? lat : "–";
+        const p95El = $("#ov-aiq-p95");
+        if (p95El) p95El.textContent = aiq.e2eP95Ms != null ? `${aiq.e2eP95Ms} ms` : "– ms";
+        const jEl = $("#ov-aiq-jitter");
+        if (jEl) jEl.textContent = aiq.jitterMs != null ? `${aiq.jitterMs}ms` : "–";
+        const nEl = $("#ov-aiq-n");
+        if (nEl) nEl.textContent = aiq.samples;
+        if (aiqPill) {
+          // 抖动是稳定性的核心：抖动越小越稳，超过 200ms 视为不稳定
+          const jitter = aiq.jitterMs;
+          const bad = jitter != null && jitter > 200;
+          const ok = jitter != null && jitter <= 60;
+          aiqPill.innerHTML = bad
+            ? "<span class='lang-zh'>波动大</span><span class='lang-en'>Unstable</span>"
+            : "<span class='lang-zh'>稳定</span><span class='lang-en'>Stable</span>";
+          aiqPill.className = bad ? "pill red sm" : ok ? "pill green sm" : "pill yellow sm";
+        }
       }
       // ---- Bridge ----
       const sw = $("#ov-br-switch");
@@ -825,7 +957,7 @@ const addMsg = (role, text) => {
         return `<div class="ch-row"><span class="dot ${dotFor(c)}"></span>
           <span class="ch-name">${esc(c.name)}</span>
           <span class="ch-proj">${desc}</span></div>`;
-      }).join("") : `<div class="ch-empty"><span class="lang-zh">暂无信道，点击右上角添加</span><span class="lang-en">No channels, click Add</span></div>`;
+      }).join("") : `<div class="state-inline"><span class="lang-zh">还没有信道，点右上角「添加」新建一个</span><span class="lang-en">No channels yet. Use Add at the top right to create one.</span></div>`;
       // ---- 吞吐 ----
       const now = Date.now(), total = st.summary.totalCalls;
       if (this.lastTs) {
@@ -841,29 +973,61 @@ const addMsg = (role, text) => {
       }
       this.lastCalls = total; this.lastTs = now;
       if (this.qpsHist.length > 1) {
+        // Y 轴上限取历史峰值（近 5 分钟窗口），并只增不减地保留一段时间，
+        // 让"流量掉了"在图上真的看得出来，而不是被自动缩放抹平。
+        this.qpsPeak = Math.max(this.qpsPeak || 0, ...this.qpsHist.map((p) => p.qps));
         drawThroughput($("#ov-chart"),
-          this.qpsHist.map((p) => p.qps), this.qpsHist.map((p) => p.ok));
+          this.qpsHist.map((p) => p.qps), this.qpsHist.map((p) => p.ok),
+          this.qpsPeak * 60);
       }
-      $("#ov-tp-rate").textContent = `${(st.summary.successRate * 100).toFixed(1)}%`;
-      // p50：按调用量加权的平均延迟近似
-      const tot = st.tools.reduce((a, t) => a + t.calls, 0);
-      const p50 = tot ? Math.round(st.tools.reduce((a, t) => a + t.calls * (t.avgMs || 0), 0) / tot) : null;
-      $("#ov-tp-p50").textContent = p50 != null ? `${p50}ms` : "–";
-      // ---- 排行 ----
-      const top = st.tools.slice(0, 8);
+      // ---- 窗口数据（缺失时全部退回累计口径，保证旧后端也能用） ----
+      const winTools = win?.tools ?? [];
+      const winCalls = win?.totalCalls ?? 0;
+      const rate = winCalls > 0 ? win.successRate : st.summary.successRate;
+      const tpRate = $("#ov-tp-rate");
+      if (tpRate) tpRate.textContent = winCalls > 0 ? `${(rate * 100).toFixed(1)}%` : "–";
+      const p95El = $("#ov-tp-p95");
+      if (p95El) p95El.textContent = win && win.p95 != null ? `${win.p95}ms` : "–";
+      // 延迟分位数：窗口接口返回的是真实样本算出的 p50/p95；
+      // 没有窗口数据时才退回"按调用量加权的平均"（并明确标注是均值，不是分位数）。
+      const p50El = $("#ov-tp-p50");
+      if (p50El) {
+        if (win && win.p50 != null) {
+          p50El.textContent = `${win.p50}ms`;
+          p50El.title = `近 60 秒 p50（${win.totalCalls} 个样本）`;
+        } else {
+          const tot = st.tools.reduce((a, t) => a + t.calls, 0);
+          const avg = tot ? Math.round(st.tools.reduce((a, t) => a + t.calls * (t.avgMs || 0), 0) / tot) : null;
+          p50El.textContent = avg != null ? `${avg}ms` : "–";
+          p50El.title = "自启动累计平均延迟（非分位数）";
+        }
+      }
+      // ---- 排行（窗口口径） ----
+      const rankSrc = winCalls > 0 ? winTools : st.tools;
+      const top = rankSrc.slice(0, 8);
       const max = Math.max(1, ...top.map((t) => t.calls));
       $("#ov-rank").innerHTML = top.map((t) => `
         <div class="rank-row"><span class="rank-name">${esc(t.name)}</span>
           <div class="rank-bar"><div class="rank-fill" style="width:${(t.calls / max * 100).toFixed(1)}%"></div></div>
           <span class="rank-num">${t.calls}</span></div>`).join("") || `<div class="hint"><span class="lang-zh">暂无调用</span><span class="lang-en">No calls</span></div>`;
-      // ---- 成功率 ----
-      const rate = st.summary.successRate;
-      $("#ov-rate").textContent = `${(rate * 100).toFixed(1)}%`;
-      drawDonut(rate);
-      const fails = [...st.tools].filter((t) => t.errors > 0).sort((a, b) => b.errors - a.errors).slice(0, 3);
+      // ---- 成功率（时间窗口口径，不是自启动累计）----
+      // 累计值会被历史失败持续稀释，"60 SEC"标签配累计数据是在骗人。
+      const rateEl = $("#ov-rate");
+      if (rateEl) rateEl.textContent = winCalls > 0 ? `${(rate * 100).toFixed(1)}%` : "–";
+      drawDonut(winCalls > 0 ? rate : 0);
+      // 窗口内无调用 / 样本稀薄时如实说明，而不是显示 100%
+      const spanHint = $("#ov-rate-span");
+      if (spanHint) {
+        spanHint.innerHTML = winCalls === 0
+          ? "<span class='lang-zh'>近 60 秒无调用</span><span class='lang-en'>No calls in 60s</span>"
+          : (win.spanMs < 30_000
+            ? `<span class='lang-zh'>样本仅覆盖 ${Math.round(win.spanMs / 1000)}s</span><span class='lang-en'>Only ${Math.round(win.spanMs / 1000)}s of samples</span>`
+            : "<span class='lang-zh'>近 60 秒</span><span class='lang-en'>Last 60s</span>");
+      }
+      const fails = winTools.filter((t) => t.errors > 0).sort((a, b) => b.errors - a.errors).slice(0, 3);
       $("#ov-fails").innerHTML = fails.length ? fails.map((t) => `
         <div class="fail-row"><span class="fail-name">${esc(t.name)}</span><span class="mono">${t.calls - t.errors}</span><b class="mono">${t.errors}</b></div>`).join("")
-        : `<div class="fail-empty"><span class="lang-zh">暂无失败</span><span class="lang-en">No failures</span></div>`;
+        : `<div class="fail-empty"><span class="lang-zh">近 60 秒无失败</span><span class='lang-en'>No failures in 60s</span></div>`;
       // ---- 最近调用（滚动） ----
       const calls = ov.recentCalls || [];
       $("#ov-calls").innerHTML = calls.length ? calls.map((c) => `
@@ -885,7 +1049,12 @@ const addMsg = (role, text) => {
         while (el.children.length > 30) el.firstChild.remove();
         el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
       }
-    } catch (e) { /* <span class="lang-zh">静默，下一轮重试</span><span class="lang-en">Retrying</span> */ }
+    } catch (e) {
+      // 轮询失败不是"没事"，而是"界面上的数字已经不可信"：降级 + 把陈旧态画出来
+      Conn.push(false);
+      markStale(Conn.state === "offline");
+      console.warn("[overview] refresh failed:", e);
+    }
   },
 };
 
@@ -907,7 +1076,7 @@ const ChannelsPage = {
       <button class="btn" id="ch-add">＋ <span class="lang-zh">新建信道</span><span class="lang-en">New Channel</span></button>
     </div>
     <div class="card"><table class="tbl"><thead><tr>
-      <th style="width:36px"></th><th><span class="lang-zh">名称</span><span class="lang-en">Name</span></th><th><span class="lang-zh">类型</span><span class="lang-en">Type</span></th><th><span class="lang-zh">状态</span><span class="lang-en">Status</span></th><th><span class="lang-zh">延迟</span><span class="lang-en">Latency</span></th><th>AI</th><th><span class="lang-zh">调用</span><span class="lang-en">Calls</span></th><th style="text-align:right"><span class='lang-zh'>操作</span><span class='lang-en'>Actions</span></th>
+      <th style="width:36px"></th><th><span class="lang-zh">名称</span><span class="lang-en">Name</span></th><th><span class="lang-zh">类型</span><span class="lang-en">Type</span></th><th><span class="lang-zh">状态</span><span class="lang-en">Status</span></th><th><span class="lang-zh">管道延迟</span><span class="lang-en">Pipe</span></th><th><span class="lang-zh">AI 端到端</span><span class="lang-en">AI E2E</span></th><th><span class="lang-zh">抖动</span><span class="lang-en">Jitter</span></th><th>AI</th><th><span class="lang-zh">调用</span><span class="lang-en">Calls</span></th><th style="text-align:right"><span class='lang-zh'>操作</span><span class='lang-en'>Actions</span></th>
     </tr></thead><tbody id="ch-tbody"></tbody></table></div>`;
   },
 
@@ -924,14 +1093,20 @@ const ChannelsPage = {
         <td><b>${esc(c.name)}</b><div class="hint mono" style="font-size:10.5px">${esc(c.bindingId)}</div></td>
         <td>${c.kind === "local" ? '<span class="pill gray"><span class="lang-zh">本地</span><span class="lang-en">Local</span></span>' : '<span class="pill purple"><span class="lang-zh">网关</span><span class="lang-en">Gateway</span></span>'}</td>
         <td>${c.kind === "local" ? '<span class="pill green"><span class="lang-zh">运行中</span><span class="lang-en">Running</span></span>' : (c.paired ? '<span class="pill green"><span class="lang-zh">已配对</span><span class="lang-en">Paired</span></span>' : '<span class="pill yellow"><span class="lang-zh">等待配对</span><span class="lang-en">Pairing</span></span>')}</td>
-        <td class="mono">${c.latencyMs != null ? c.latencyMs + " ms" : "–"}</td>
+        <td class="mono" title="MCP ↔ 网关 的心跳 RTT">${c.latencyMs != null ? c.latencyMs + " ms" : "–"}</td>
+        <td class="mono" title="AI 发请求到拿到 MCP 回包的完整往返（网关测量）">${c.quality && c.quality.samples > 0 && c.quality.e2eAvgMs != null ? c.quality.e2eAvgMs + " ms" : '<span class="hint">–</span>'}</td>
+        <td class="mono" title="AI 消息到达节奏的波动，越小越稳">${c.quality && c.quality.jitterMs != null ? c.quality.jitterMs + " ms" : '<span class="hint">–</span>'}</td>
         <td>${c.ai ? esc(c.ai.name) : '<span class="hint">–</span>'}</td>
         <td class="mono">${c.stats.requestsIn}</td>
         <td><div class="row-actions">
           <button class="btn sm ghost" data-act="share" data-id="${c.bindingId}"><span class="lang-zh">分享</span><span class="lang-en">Share</span></button>
           ${c.kind === "gateway" ? `<button class="btn sm ghost" data-act="recode" data-id="${c.bindingId}"><span class="lang-zh">换码</span><span class="lang-en">New Code</span></button>` : ""}
           <button class="btn sm danger" data-act="close" data-id="${c.bindingId}"><span class="lang-zh">关闭</span><span class="lang-en">Close</span></button>
-        </div></td></tr>`).join("") || `<tr><td colspan="8" class="hint" style="text-align:center;padding:24px"><span class='lang-zh'>暂无信道</span><span class='lang-en'>No channels</span></td></tr>`;
+        </div></td></tr>`).join("") || `<tr><td colspan="10">${emptyHTML({
+        zh: "还没有信道。新建一个后，AI 客户端才能连上这台机器。",
+        en: "No channels yet. Create one so an AI client can reach this machine.",
+        icon: "#i-channels",
+      })}</td></tr>`;
     $$("#ch-tbody [data-act]").forEach((b) => b.addEventListener("click", () => this.act(b.dataset.act, b.dataset.id)));
   },
 
@@ -1090,7 +1265,12 @@ function makeExtPage(kind, title, pageId, badgeId, cardFn) {
       if (badge) badge.textContent = items.length || "";
       $(`#${pageId}-wrap`).innerHTML = items.length
         ? `<div class="ext-grid">` + items.map(cardFn).join("") + `</div>`
-        : `<div class="card"><div class="hint" style="padding:24px;text-align:center"><span class='lang-zh'>暂无</span><span class='lang-en'>None</span>${title}</div></div>`;
+        : `<div class="card"><div class="ext-empty">
+            <p class="lang-zh">还没有安装${title}。上传一个包就能在这里管理它。</p>
+            <p class="lang-en">Nothing installed yet. Upload a package to manage it here.</p>
+            <button class="btn sm" data-add-ext><span class="lang-zh">添加${title}</span><span class="lang-en">Add</span></button>
+          </div></div>`;
+      $(`#${pageId}-wrap [data-add-ext]`)?.addEventListener("click", () => openInstallModal(kind, title, () => this.show()));
       $$(`#${pageId}-wrap [data-dis]`).forEach((sw) => sw.addEventListener("change", async () => {
         const r = await api(`/api/extensions/${encodeURIComponent(sw.dataset.dis)}/disable`, { method: "POST" }).catch((e) => toast(e.message, false));
         if (r?.ok) { toast("<span class='lang-zh'>已禁用</span><span class='lang-en'>Disabled</span>，重启 dashboard 恢复"); this.show(); }
@@ -1174,7 +1354,7 @@ const ToolsPage = {
   html() {
     return `<div class="sec-head"><div class="sec-title"><span class="lang-zh">工具</span><span class="lang-en">Tools</span> <span class="hint" id="tool-total"></span></div></div>
     <input class="tool-search" id="tool-q" placeholder="搜索工具…" data-ph-en="Search tools…">
-    <div class="tool-grid" id="tool-grid"></div>`;
+    <div class="tool-list-wrap" id="tool-grid"></div>`;
   },
   init() {
     $("#page-tools").innerHTML = this.html();
@@ -1193,17 +1373,50 @@ const ToolsPage = {
     const list = this.tools.filter((t) =>
       t.name.toLowerCase().includes(q.toLowerCase()) ||
       (t.description || "").toLowerCase().includes(q.toLowerCase()));
-    $("#tool-grid").innerHTML = list.map((t) => {
-      const s = smap.get(t.name);
-      const dis = this.disabled.has(t.name);
-      return `<div class="card tool-card${dis ? " disabled" : ""}" data-name="${esc(t.name)}">
-        <div class="t-name">${esc(t.name)}${dis ? ' <span class="pill gray sm"><span class="lang-zh">已禁用</span><span class="lang-en">Disabled</span></span>' : ""}</div>
-        <div class="t-desc">${esc(t.description || "")}</div>
-        <div class="tool-meta"><span class="pill ${this.danger(t.name) ? "red" : "gray"}">${this.danger(t.name) ? "<span class='lang-zh'>危险</span><span class='lang-en'>Risky</span>" : "<span class='lang-zh'>安全</span><span class='lang-en'>Safe</span>"}</span>
-        <span class="tool-calls">${s ? `${s.calls} <span class="lang-zh">次调用</span><span class="lang-en">calls</span>` : "<span class='lang-zh'>未调用</span><span class='lang-en'>Unused</span>"}</span>
-        <label class="switch sm" title="${dis ? 'Enable' : 'Disable'}" data-stop><input type="checkbox"${dis ? "" : " checked"} data-tool-toggle="${esc(t.name)}"><span class="track"></span></label></div></div>`;
-    }).join("");
-    $$("#tool-grid .tool-card").forEach((c) =>
+    // 33 个工具是"清单"不是"收藏"：用行承载，行才有地方放真实数据列（调用数 / 错误数）
+    if (!list.length) {
+      $("#tool-grid").innerHTML = emptyHTML({
+        zh: q ? `没有匹配「${esc(q)}」的工具，换个关键词试试。` : "还没有注册任何工具。",
+        en: q ? `No tool matches “${esc(q)}”. Try another keyword.` : "No tools registered yet.",
+        icon: "#i-tools",
+      });
+      return;
+    }
+    const maxCalls = Math.max(1, ...list.map((t) => smap.get(t.name)?.calls || 0));
+    $("#tool-grid").innerHTML =
+      `<div class="tool-list" role="table">
+        <div class="tool-list-head" role="row">
+          <span role="columnheader"><span class="lang-zh">工具</span><span class="lang-en">Tool</span></span>
+          <span role="columnheader" class="ta-r"><span class="lang-zh">调用</span><span class="lang-en">Calls</span></span>
+          <span role="columnheader" class="ta-r"><span class="lang-zh">错误</span><span class="lang-en">Errors</span></span>
+          <span role="columnheader" class="ta-c" aria-label="enabled"></span>
+        </div>` +
+      list.map((t) => {
+        const s = smap.get(t.name);
+        const dis = this.disabled.has(t.name);
+        const calls = s?.calls || 0, errs = s?.errors || 0;
+        const risky = this.danger(t.name);
+        return `<div class="tool-row${dis ? " is-off" : ""}" role="row" data-name="${esc(t.name)}">
+          <span class="tool-id" role="cell">
+            <span class="tool-name">${esc(t.name)}</span>
+            <span class="tool-desc">${esc(t.description || "")}</span>
+            ${risky ? `<span class="tool-flag"><svg class="icon-ico" aria-hidden="true"><use href="#i-errors"/></svg><span class="lang-zh">危险</span><span class="lang-en">Risky</span></span>` : ""}
+            ${dis ? `<span class="tool-flag"><span class="lang-zh">已禁用</span><span class="lang-en">Disabled</span></span>` : ""}
+          </span>
+          <span class="tool-cell ta-r" role="cell">
+            <span class="tool-calls">${calls || "–"}</span>
+            ${calls ? `<span class="tool-bar" style="--p:${(calls / maxCalls * 100).toFixed(1)}%"></span>` : ""}
+          </span>
+          <span class="tool-cell ta-r" role="cell">${errs ? `<span class="tool-err">${errs}</span>` : '<span class="tool-zero">0</span>'}</span>
+          <span class="tool-cell ta-c" role="cell">
+            <label class="switch" data-stop title="${dis ? 'Enable' : 'Disable'}">
+              <input type="checkbox"${dis ? "" : " checked"} data-tool-toggle="${esc(t.name)}"
+                aria-label="${esc(t.name)}"><span class="track"></span>
+            </label>
+          </span>
+        </div>`;
+      }).join("") + `</div>`;
+    $$("#tool-grid .tool-row[data-name]").forEach((c) =>
       c.addEventListener("click", (e) => {
         if (e.target.closest("[data-stop]")) return;
         this.openPlayground(this.tools.find((t) => t.name === c.dataset.name));
@@ -1333,7 +1546,9 @@ const ErrorsPage = {
         <div class="cselect" id="err-acked"></div>
       </div></div>
     <div class="err-stats" id="err-stats"></div>
-    <div class="card"><div id="err-list"></div></div>`;
+    <div class="card"><div id="err-list"></div></div>
+    <div class="sec-head" style="margin-top:16px"><div class="sec-title"><span class="lang-zh">崩溃留痕（重启后还在）</span><span class="lang-en">Crashes (persisted)</span></div></div>
+    <div class="card"><div id="crash-list"><div class="hint" style="padding:12px"><span class="lang-zh">加载中…</span><span class="lang-en">Loading…</span></div></div></div>`;
   },
   init() {
     $("#page-errors").innerHTML = this.html();
@@ -1390,6 +1605,32 @@ const ErrorsPage = {
       this.show();
     }));
     if (!quiet) $("#badge-errors").textContent = un || "";
+    // 崩溃留痕（落盘记录，重启后还在）：只取 crash 类，带现场摘要
+    try {
+      const c = await api(`/api/crashes?kind=crash&limit=20`).catch(() => null);
+      const box = $("#crash-list");
+      if (box && c) {
+        box.innerHTML = c.list.map((r) => {
+          const s = r.snapshot || {};
+          const sub = [r.proc, r.source,
+            s.rssMB != null ? `RSS ${s.rssMB}MB` : "",
+            s.heapUsedMB != null ? `堆 ${s.heapUsedMB}MB` : "",
+            s.uptimeSec != null ? `运行 ${s.uptimeSec}s` : "",
+          ].filter(Boolean).join(" · ");
+          return `<div class="err-item">
+            <div class="err-line">
+              <span class="pill red">CRASH</span>
+              <span class="err-msg">${esc((r.text || "").split("\n")[0].slice(0, 120))}</span>
+              <span class="err-ts">${fmtTime(r.ts)}</span>
+            </div>
+            <div class="err-detail hidden"><b><span class="lang-zh">进程</span><span class="lang-en">Proc</span></b> ${esc(r.proc || "")}  <b>来源</b> ${esc(r.source || "")}\n<b><span class="lang-zh">时间</span><span class="lang-en">Time</span></b> ${new Date(r.ts).toLocaleString()}\n<b><span class="lang-zh">现场</span><span class="lang-en">Snapshot</span></b> ${esc(sub)}\n\n${esc(r.text || "")}${r.stack ? "\n\n" + esc(r.stack.slice(0, 2000)) : ""}</div>
+          </div>`;
+        }).join("") || `<div class="hint" style="padding:20px;text-align:center"><span class='lang-zh'>无崩溃记录</span><span class='lang-en'>No crashes</span></div>`;
+        $$("#crash-list .err-item").forEach((it) => it.addEventListener("click", () => {
+          it.querySelector(".err-detail").classList.toggle("hidden");
+        }));
+      }
+    } catch { /* /api/crashes 不可用时静默 */ }
   },
 };
 
@@ -1401,6 +1642,9 @@ const SettingsModal = {
   fetchedModels: [],
   open(tab = "general") {
     openModal(`<div class="set-modal">
+      <button class="modal-x" id="set-close" aria-label="关闭设置" data-title-en="Close settings" title="关闭设置">
+        <svg class="icon-ico" aria-hidden="true"><use href="#i-close"/></svg>
+      </button>
       <div class="set-side">
         <div class="modal-title" style="margin-bottom:12px"><span class='lang-zh'>设置</span><span class='lang-en'>Settings</span></div>
         <button class="set-tab" data-tab="general"><span>⚙</span><span class="lang-zh">通用设置</span><span class="lang-en">General</span></button>
@@ -1440,7 +1684,7 @@ const SettingsModal = {
           <div class="hint" style="margin-bottom:12px"><span class='lang-zh'>填入各提供商的</span><span class='lang-en'>Enter</span> API <span class='lang-zh'>密钥即可使用其模型</span><span class='lang-en'>key to use models</span>。Key <span class='lang-zh'>只存服务端</span><span class='lang-en'>Server-side only</span>（~/.mcp-server/agent.json），<span class='lang-zh'>不会发送到浏览器</span><span class='lang-en'>Not sent to browser</span>。</div>
           <div id="prov-list"></div>
           <button class="add-prov" id="prov-add">+ <span class="lang-zh">添加模型提供商</span><span class="lang-en">Add Provider</span></button>
-          <div class="hidden" id="prov-form-card" style="margin-top:12px;border-top:1px solid var(--border);padding-top:14px">
+          <div class="hidden" id="prov-form-card" style="margin-top:12px">
             <div class="set-sec-title" id="pf-title"><span class="lang-zh">添加模型提供商</span><span class="lang-en">Add Provider</span></div>
             <label class="mf-label"><span class="lang-zh">显示名称</span><span class="lang-en">Name</span></label>
             <input class="mf-input" id="pf-name" placeholder="如 DeepSeek" data-ph-en="e.g. DeepSeek">
@@ -1449,12 +1693,12 @@ const SettingsModal = {
             <label class="mf-label">API <span class="lang-zh">协议</span><span class="lang-en">Protocol</span></label>
             <div class="cselect" id="cs-pftype"></div>
             <label class="mf-label">API <span class="lang-zh">密钥</span><span class="lang-en">Key</span></label>
-            <input class="mf-input" id="pf-key" type="password" placeholder="留空表示不修改" data-ph-en="Empty = no change"
+            <input class="mf-input" id="pf-key" type="password" placeholder="留空表示不修改" data-ph-en="Empty = no change">
             <div class="model-dir-head"><span class="mf-label"><span class="lang-zh">模型目录</span><span class="lang-en">Models</span></span><button class="link-btn" id="pf-fetch" type="button"><span class='lang-zh'>获取可用模型</span><span class='lang-en'>Fetch Models</span></button></div>
             <div class="model-box" id="model-box"><div class="hint"><span class="lang-zh">暂无模型，请获取或手动添加</span><span class="lang-en">No models, fetch or add</span></div></div>
             <button class="btn sm ghost" id="pf-add-model" type="button" style="margin-top:8px">+ <span class='lang-zh'>添加模型</span><span class='lang-en'>Add Model</span></button>
-            <div class="modal-actions" style="justify-content:flex-start">
-              <button class="btn ghost sm" id="pf-cancel"><span class="lang-zh">返回</span><span class="lang-en">Back</span></button>
+            <div class="modal-actions">
+              <button class="btn ghost sm" id="pf-cancel" type="button"><span class="lang-zh">取消</span><span class="lang-en">Cancel</span></button>
               <button class="btn primary sm" id="pf-save"><span class="lang-zh">创建提供商</span><span class="lang-en">Create Provider</span></button>
             </div>
           </div>
@@ -1548,11 +1792,13 @@ const SettingsModal = {
     initCSelect("cs-pftype", {
       value: "openai",
       options: [
-        { value: "openai", label: "OpenAI <span class='lang-zh'>兼容</span><span class='lang-en'>OK</span>" },
-        { value: "anthropic", label: "Anthropic" },
-      ],
+        // label 走 textContent/esc()，必须是纯文本；双语沿用项目既有模式
+        { value: "openai", zh: "OpenAI 兼容", en: "OpenAI-compatible" },
+        { value: "anthropic", zh: "Anthropic", en: "Anthropic" },
+      ].map((o) => ({ value: o.value, label: (document.documentElement.dataset.lang || "zh") === "en" ? o.en : o.zh, zh: o.zh, en: o.en })),
     });
     $("#prov-add").addEventListener("click", () => this.openForm(null));
+    $("#set-close").addEventListener("click", () => closeModal());
     $("#pf-cancel").addEventListener("click", () => $("#prov-form-card").classList.add("hidden"));
     $("#pf-fetch").addEventListener("click", async () => {
       const btn = $("#pf-fetch");
@@ -1747,9 +1993,15 @@ const PAGES = {
 
 (async function boot() {
   applyLang(); // 初始化语言（placeholder/title 切换）
-  // Tauri 桌面端：显示窗口控制按钮
+  // 桌面端（Tauri / Electron）：显示窗口控制按钮
   try {
-    if (window.__TAURI__) {
+    // Electron：preload 暴露的 window.mcpWindow
+    if (window.mcpWindow) {
+      document.documentElement.classList.add("tauri"); // 复用同一套按钮样式/布局
+      $("#win-min")?.addEventListener("click", async () => { try { await window.mcpWindow.minimize(); } catch(e){ console.error(e); } });
+      $("#win-max")?.addEventListener("click", async () => { try { await window.mcpWindow.toggleMaximize(); } catch(e){ console.error(e); } });
+      $("#win-close")?.addEventListener("click", async () => { try { await window.mcpWindow.close(); } catch(e){ console.error(e); } });
+    } else if (window.__TAURI__) {
       document.documentElement.classList.add("tauri");
       let win = null;
       try {
@@ -1770,9 +2022,11 @@ const PAGES = {
       }
     }
   } catch { /* 浏览器环境，忽略 */ }
+  // 先渲染概览页，#uptime 在其中；boot 期间下面这几行才能安全取到
+  navTo("overview");
   try {
     const ov = await api("/api/overview");
-    { const _u = $("#uptime"); if (_u) _u.innerHTML = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`; }
+    $("#uptime").innerHTML = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`;
     buildCmdkIndex();
   } catch (e) {
     toast("<span class='lang-zh'>连接 dashboard 后端失败</span><span class='lang-en'>Backend connect failed</span>", false);
@@ -1780,8 +2034,7 @@ const PAGES = {
   setInterval(async () => {
     try {
       const ov = await api("/api/overview");
-      { const _u = $("#uptime"); if (_u) _u.innerHTML = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`; }
+      $("#uptime").innerHTML = `<span class='lang-zh'>运行时长</span><span class='lang-en'>Uptime</span> ${fmtUptime(ov.uptimeSec)}`;
     } catch { /* ignore */ }
   }, 10000);
-  navTo("overview");
 })();

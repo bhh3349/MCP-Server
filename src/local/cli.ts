@@ -12,6 +12,7 @@ import { ChannelManager } from "../channel/manager.js";
 import { buildServer } from "../server.js";
 import { ToolStats } from "../dashboard/stats.js";
 import { logStore } from "../dashboard/logger.js";
+import { installCrashHandler } from "../dashboard/crashlog.js";
 import { startDashboard } from "../dashboard/api.js";
 
 async function main() {
@@ -26,6 +27,19 @@ async function main() {
   // dashboard 与信道内嵌 server 共享同一份工具调用统计
   const stats = new ToolStats();
   logStore.install();
+  // 崩溃留痕：快照带上"死前现场"（最近日志 + 工具调用摘要）
+  installCrashHandler("local-channel", {
+    recentLogs: () => logStore.query({ limit: 50 }).map((e) => ({ ts: e.ts, level: e.level, source: e.source, text: e.text })),
+    toolStats: () => {
+      const list = stats.list();
+      return {
+        totalCalls: list.reduce((a, s) => a + s.calls, 0),
+        totalErrors: list.reduce((a, s) => a + s.errors, 0),
+        topErrors: list.filter((s) => s.errors > 0).sort((a, b) => b.errors - a.errors).slice(0, 10)
+          .map((s) => ({ name: s.name, errors: s.errors })),
+      };
+    },
+  });
   const mgr = new ChannelManager(
     bridge,
     async () => (await buildServer({ stats, withChannels: false })).server,

@@ -164,8 +164,11 @@ export class GatewayClient extends EventEmitter {
           this.emit("latency", Date.now() - msg.ts);
         }
         return;
-      case "pong":
-        this.emit("pong", msg.ts);
+      case "quality":
+        // 网关推送的 AI↔网关 信道质量（端到端延迟/抖动）
+        if (typeof msg.channelId === "string" && msg.quality) {
+          this.emit("quality", msg.channelId, msg.quality);
+        }
         return;
       default:
         return;

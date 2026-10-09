@@ -1,0 +1,14 @@
+# 统一行尾：仓库内一律 LF，检出时按平台转换。
+# 原因：本项目在 Windows 开发，但网关部署在 Linux 服务器。
+# 若不锁定，Windows 的 CRLF 会与仓库内容产生上百个文件的假差异，
+# 让每次 diff 都淹没在行尾噪音里，真正的改动反而看不见。
+* text=auto eol=lf
+
+# 二进制文件不做行尾转换
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.exe binary
+*.zip binary

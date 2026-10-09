@@ -3,7 +3,8 @@
  *
  * 把 src/local/cli.ts（连同其全部运行时依赖 ws/zod/@modelcontextprotocol/server/ssh2…）
  * 用 esbuild 打成单文件 CJS，再把它需要的运行期资源（UI 静态文件、extensions 扩展）
- * 一起放到 src-tauri/sidecar/，供 tauri.conf.json 的 bundle.resources 分发。
+ * 一起放到 src-tauri/sidecar/，供 tauri.conf.json 的 bundle.resources
+ * 与 electron-builder.yml 的 extraResources 分发（两条桌面链路共用同一份 sidecar）。
  *
  * 为什么不用 tsc 产物：dist/ 只有编译后的 JS，不含 node_modules，
  * 安装到用户机器后 node 会因找不到模块立即崩溃。

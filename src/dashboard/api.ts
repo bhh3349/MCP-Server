@@ -13,6 +13,7 @@
  *   GET  /api/logs                ?level=&limit=&since=
  *   GET  /api/errors              错误收集
  *   POST /api/errors/:id/ack      标记已处理
+ *   GET  /api/crashes             落盘记录：崩溃快照 + error 时间线（?kind=&limit=&since=）
  *   GET  /api/extensions          扩展列表
  *   POST /api/extensions/:name/disable
  *   POST /api/tools/call          {name, args} playground 试调
@@ -95,7 +96,7 @@ const MIME: Record<string, string> = {
 };
 
 function uiDir(): string {
-  // 打包后由 Tauri 注入 MCP_UI_DIR（指向 sidecar/ui）；dev/tsc 走脚本同级 ui/。
+  // 打包后由桌面壳（Tauri main.rs / Electron src-electron/main.cjs）注入 MCP_UI_DIR（指向 sidecar/ui）；dev/tsc 走脚本同级 ui/。
   const envDir = process.env["MCP_UI_DIR"];
   if (envDir) return normalize(envDir);
   try {
@@ -338,6 +339,30 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
       return json(res, { summary: stats.summary(), tools: stats.list(), disabled: [...disabledTools] });
     }
 
+    /**
+     * 时间窗口统计：?sec=60（默认 60，范围 5~300 秒）
+     * 概览页的成功率/失败榜/排行/延迟分位数都走这里，而不是"自启动累计"——
+     * 累计口径在长期运行的进程里会严重滞后，不能当实时监控用。
+     */
+    if (method === "GET" && path === "/api/stats/window") {
+      const sec = Math.min(Math.max(parseInt(url.searchParams.get("sec") ?? "60", 10) || 60, 5), 300);
+      const w = stats.window(sec * 1000);
+      const pct = (p: number) => (w.latencies.length ? w.latencies[Math.min(w.latencies.length - 1, Math.floor(w.latencies.length * p))] ?? 0 : null);
+      return json(res, {
+        windowSec: sec,
+        spanMs: w.spanMs,
+        totalCalls: w.totalCalls,
+        totalErrors: w.totalErrors,
+        successRate: w.successRate,
+        p50: pct(0.5),
+        p95: pct(0.95),
+        tools: w.tools.map((t) => ({
+          name: t.name, calls: t.calls, errors: t.errors, avgMs: t.avgMs,
+          errRate: t.calls > 0 ? t.errors / t.calls : 0,
+        })),
+      });
+    }
+
     if (method === "GET" && path === "/api/logs") {
       const level = url.searchParams.get("level") as "info" | "warn" | "error" | "debug" | null;
       const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "200", 10) || 200, 1000);
@@ -368,6 +393,21 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
     if (method === "POST" && ackMatch?.[1]) {
       const ok = logStore.ackError(parseInt(ackMatch[1], 10));
       return json(res, { ok });
+    }
+
+    // ---- 崩溃留痕：读落盘记录（崩溃快照 + error 时间线，重启后还在） ----
+    if (method === "GET" && path === "/api/crashes") {
+      const kindParam = url.searchParams.get("kind");
+      const kind = kindParam === "crash" || kindParam === "error" ? kindParam : undefined;
+      const { readCrashlog } = await import("./crashlog.js");
+      return json(res, {
+        dir: (await import("./crashlog.js")).crashlogDir(),
+        list: readCrashlog({
+          ...(kind ? { kind } : {}),
+          limit: Math.min(parseInt(url.searchParams.get("limit") ?? "100", 10) || 100, 500),
+          since: parseInt(url.searchParams.get("since") ?? "0", 10) || 0,
+        }),
+      });
     }
 
     // ---- Agent 控制接口 ----
@@ -545,6 +585,29 @@ export async function startDashboard(opts: DashboardOptions = {}): Promise<{ por
           case "errors":
             return logStore.errorList({ limit: Math.min(Number(args.limit) || 20, 50) })
               .map((e) => ({ ts: e.ts, source: e.source, text: e.text.slice(0, 300) }));
+          case "crashes": {
+            // 落盘记录：崩溃快照 + error 时间线，重启后还在。
+            // 崩溃记录带完整现场（堆栈 + 内存 + 死前日志），只取最近几条；
+            // error 时间线只取摘要。
+            const { readCrashlog } = await import("./crashlog.js");
+            const limit = Math.min(Number(args.limit) || 10, 30);
+            const list = readCrashlog({ limit });
+            return list.map((r) => r.kind === "crash"
+              ? { kind: "crash" as const, ts: r.ts, proc: r.proc, source: r.source,
+                  text: r.text.slice(0, 2000), stack: r.stack?.slice(0, 2000),
+                  snapshot: r.snapshot ? {
+                    uptimeSec: r.snapshot.uptimeSec, rssMB: r.snapshot.rssMB,
+                    heapUsedMB: r.snapshot.heapUsedMB, freeMemMB: r.snapshot.freeMemMB,
+                    version: r.snapshot.version, node: r.snapshot.node,
+                    argv: r.snapshot.argv,
+                    recentLogs: r.snapshot.recentLogs.slice(-20).map((l) => ({
+                      ts: l.ts, level: l.level, source: l.source, text: l.text.slice(0, 300),
+                    })),
+                    toolStats: r.snapshot.toolStats,
+                  } : undefined }
+              : { kind: "error" as const, ts: r.ts, proc: r.proc, source: r.source,
+                  text: r.text.slice(0, 500) });
+          }
           case "isolate": case "restore": {
             const name = String(args.name ?? "");
             if (!TOOL_DISPATCH.has(name)) throw new Error(`unknown tool: ${name}`);

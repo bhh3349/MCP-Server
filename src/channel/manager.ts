@@ -35,6 +35,7 @@ import {
 } from "../local/channel-server.js";
 import { GatewayClient } from "./gateway-client.js";
 import { GatewayChannelSession } from "./gateway-dataplane.js";
+import type { ChannelQuality } from "../gateway/quality.js";
 
 export type ChannelKind = "gateway" | "local";
 
@@ -66,6 +67,8 @@ export interface ChannelStatus {
   liveness: LivenessRecord["state"];
   /** 心跳 RTT 毫秒，null = 未测到 */
   latencyMs: number | null;
+  /** AI ↔ 网关 的质量指标（网关测量后推送，见 gateway/quality.ts 的口径说明） */
+  quality: ChannelQuality | null;
   ai: AISession | null;
   stats: ChannelStats;
   createdAt: number;
@@ -89,6 +92,8 @@ interface ChannelRecord {
   createdAt: number;
   liveness: LivenessRecord;
   latencyMs: number | null;
+  /** AI ↔ 网关 的质量指标（网关测量后推送，见 gateway/quality.ts 的口径说明） */
+  quality: ChannelQuality | null;
   ai: AISession | null;
   stats: ChannelStats;
   /** 本地信道的 HTTP 服务（gateway 信道为 null） */
@@ -215,6 +220,10 @@ export class ChannelManager {
     client.on("channel.closed", (channelId: string) => {
       void this.remove(channelId);
     });
+    // 网关推送的 AI 质量（端到端延迟/抖动）——按 channelId 精确落到对应信道
+    client.on("quality", (channelId: string, q: ChannelQuality) => {
+      this.onChannelQuality(channelId, q);
+    });
     // 管道断开 → 该网关名下信道进入 mcp_lost 倒计时（网关侧独立计时 10 分钟）
     client.on("drop", () => {
       for (const rec of this.channels.values()) {
@@ -288,6 +297,7 @@ export class ChannelManager {
       createdAt: now,
       liveness: newLivenessRecord(resp.bindingId, now),
       latencyMs: null,
+      quality: null, // 网关推 quality 消息后填充
       ai: null, // 等步骤2：AI join 后才有
       stats: { requestsIn: 0, requestsOut: 0, errors: 0 },
       localServer: null,
@@ -338,6 +348,7 @@ export class ChannelManager {
       createdAt: now,
       liveness: newLivenessRecord(bindingId, now),
       latencyMs: null,
+      quality: null,
       ai: null,
       stats: { requestsIn: 0, requestsOut: 0, errors: 0 },
       localServer: local,
@@ -346,6 +357,33 @@ export class ChannelManager {
     };
     this.channels.set(bindingId, rec);
     return { ...info, bindingId };
+  }
+
+  /**
+   * 本地信道空闲回收。
+   *
+   * 本地信道不产生心跳（onHeartbeatAck 只在网关侧调用），所以 liveness
+   * 状态机对它无效 —— 此前唯一的回收路径是显式 remove()，且 sweep() 从未
+   * 被调用，等于"建了就永久占位"（每条还占一个端口 + 一个独立 McpServer）。
+   *
+   * 这里按"最后活动时间"回收：空闲超过 idleMs 且当前没有 AI 会话的本地信道
+   * 会被关掉。有 AI 连着的信道不会被误杀（sessionCount > 0 时跳过）。
+   *
+   * @returns 被回收的 bindingId 列表
+   */
+  async sweepLocalIdle(idleMs = 30 * 60 * 1000, now = Date.now()): Promise<string[]> {
+    const reaped: string[] = [];
+    for (const rec of [...this.channels.values()]) {
+      if (rec.kind !== "local" || !rec.localServer) continue;
+      // 有活跃 AI 会话 → 不回收
+      if (rec.localServer.sessionCount > 0) continue;
+      const last = rec.localServer.lastActivity;
+      if (now - last > idleMs) {
+        reaped.push(rec.bindingId);
+        await this.remove(rec.bindingId);
+      }
+    }
+    return reaped;
   }
 
   /** 本地信道 AI 接入状态同步（从 LocalChannelServer 轮询） */
@@ -404,6 +442,20 @@ export class ChannelManager {
     rec.latencyMs = now - pingTs;
   }
 
+  /**
+   * 网关推送的 AI 质量指标（端到端延迟/抖动/pong 应答率）。
+   * 网关是权威测量方：AI 是第三方网页，它测不了 AI↔网关 的纯 RTT，
+   * 只能测"AI 发请求到拿到 MCP 回包"这条业务链路（见 gateway/quality.ts）。
+   *
+   * 绑定关系：建信道时 `bindingId = created.channelId`，所以网关推来的
+   * channelId 就是 MCP 侧的 bindingId，可以直接精确匹配。
+   */
+  onChannelQuality(gatewayChannelId: string, quality: ChannelQuality): void {
+    const rec = this.channels.get(gatewayChannelId);
+    if (!rec || rec.kind !== "gateway") return;
+    rec.quality = quality;
+  }
+
   /** 本地扫描：清理已关闭的信道（网关会主动通知，sweep 是兜底） */
   async sweep(now = Date.now()): Promise<string[]> {
     const closed: string[] = [];
@@ -414,6 +466,9 @@ export class ChannelManager {
         await this.remove(rec.bindingId);
       }
     }
+    // 本地信道不走 liveness（无心跳），单独按空闲时间回收
+    const reaped = await this.sweepLocalIdle(30 * 60 * 1000, now);
+    closed.push(...reaped);
     return closed;
   }
 
@@ -475,6 +530,7 @@ export class ChannelManager {
       paired: r.ai !== null,
       liveness: r.liveness.state,
       latencyMs: r.latencyMs,
+      quality: r.quality,
       ai: r.ai,
       stats: { ...r.stats },
       createdAt: r.createdAt,
@@ -505,6 +561,7 @@ export class ChannelManager {
       paired: r.ai !== null,
       liveness: r.liveness.state,
       latencyMs: r.latencyMs,
+      quality: r.quality,
       ai: r.ai,
       stats: { ...r.stats },
       createdAt: r.createdAt,

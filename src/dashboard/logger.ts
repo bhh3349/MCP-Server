@@ -1,7 +1,12 @@
 /**
  * 日志采集：拦截 console 输出，存入内存环形缓冲，供 dashboard /api/logs /api/errors 查询。
  * 只在 dashboard 模式下 install()，不影响 stdio 模式。
+ *
+ * error 级日志同时落盘（见 crashlog.ts）：进程崩溃、重启后磁盘记录还在，
+ * 重启后可通过 /api/crashes 与助手读取"死前发生了什么"。
  */
+import { persistError } from "./crashlog.js";
+
 export type LogLevel = "info" | "warn" | "error" | "debug";
 
 export interface LogEntry {
@@ -71,6 +76,9 @@ class LogStore {
     if (e.level === "error") {
       this.errors.push({ ...e, acked: false });
       if (this.errors.length > MAX_ERRORS) this.errors.splice(0, this.errors.length - MAX_ERRORS);
+      // error 落盘：崩溃/重启后还能查（同步追加，失败静默，不阻塞主流程）
+      // crashlog.ts 不依赖本模块，无循环导入，可静态引用
+      try { persistError(e.source, e.text); } catch { /* 落盘失败不影响内存日志 */ }
     }
     return e;
   }

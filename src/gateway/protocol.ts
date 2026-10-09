@@ -29,6 +29,12 @@ export const HEARTBEAT_TIMEOUT_MS = 90_000;
 /** MCP 断线宽限：10 分钟内重连可无缝恢复，超时信道关闭、配对码作废 */
 export const DISCONNECT_GRACE_MS = 15 * 60 * 1000;
 export const AI_DISCONNECT_GRACE_MS = 5 * 60 * 1000;
+/**
+ * 从未配对过的信道：配对码过期后再宽限这么久就关闭。
+ * 没有这条规则，"建了信道但没把配对码给 AI"的信道会永久占位
+ * （它既不是 mcp_lost，aiLostAt 也永远是 null，两条宽限规则都管不到）。
+ */
+export const UNPAIRED_GRACE_MS = 15 * 60 * 1000;
 /** 存活扫描间隔 */
 export const SWEEP_INTERVAL_MS = 30_000;
 /** 单帧最大载荷 32MB（防内存炸弹；MCP 侧单次读上限 10MB） */
@@ -85,6 +91,7 @@ export type ChannelCloseReason =
   | "grace_expired"   // MCP 断线超 15 分钟
   | "ai_grace_expired" // AI 断线超 5 分钟
   | "replaced"        // 配对码被 recode 替换（旧码作废，信道本身保留）
+  | "unpaired_expired" // 建了从未配对，配对码过期 + 宽限期满
   | "ai_gone";        // 预留
 
 /** 对端离开原因 */

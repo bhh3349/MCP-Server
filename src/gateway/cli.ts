@@ -14,6 +14,10 @@
  */
 import { writeFileSync } from "node:fs";
 import { GatewayServer, generateGatewayToken } from "./server.js";
+import { installCrashHandler } from "../dashboard/crashlog.js";
+
+// 崩溃留痕：网关是常驻公网进程，崩溃快照对定位最关键
+installCrashHandler("gateway");
 
 async function main() {
   if (process.argv.includes("--gen-token")) {

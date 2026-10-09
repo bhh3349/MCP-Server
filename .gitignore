@@ -8,3 +8,4 @@ src-tauri/target/
 src-tauri/gen/
 src-tauri/sidecar/
 release/
+release-electron/
