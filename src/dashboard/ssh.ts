@@ -66,6 +66,8 @@ export function sshRunJob(cfg: SshConfig, command: string): string {
           job.exitCode = code;
           conn.end();
         });
+        // ssh2 Channel 无 'error' 监听会直接 throw 打崩进程
+        stream.on("error", (e: Error) => fail(`SSH 通道错误: ${e.message}`));
       });
     })
     .on("error", (err) => fail(`SSH 连接失败: ${err.message}`))

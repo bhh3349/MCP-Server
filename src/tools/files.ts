@@ -64,6 +64,9 @@ export const ReadFileInput = z.object({
 
 const BOM = "﻿";
 
+/** 文本模式单次读取上限：文本模式会把整个文件读进内存，无上限可被诱导读大文件 OOM 打崩进程 */
+const TEXT_MODE_MAX_BYTES = 50 * 1024 * 1024;
+
 export async function readFile(args: z.infer<typeof ReadFileInput>) {
   const { path, offset, limit, encoding, startByte, maxBytes, stripBom } = ReadFileInput.parse(args);
   const abs = safePath(path);
@@ -104,6 +107,15 @@ export async function readFile(args: z.infer<typeof ReadFileInput>) {
   // ---- text mode: 按行分页 ----
   let text: string;
   try {
+    // 先查大小：无上限时诱导读取 GB 级文件会直接 OOM 打崩进程
+    const st = await fs.stat(abs);
+    if (st.isDirectory()) throw new Error(`is-directory: ${path}`);
+    if (st.size > TEXT_MODE_MAX_BYTES) {
+      throw new Error(
+        `file-too-large: ${path}(${(st.size / 1048576).toFixed(1)}MB)，` +
+        `文本模式上限 ${TEXT_MODE_MAX_BYTES / 1048576}MB；请用字节模式分页读取（startByte/maxBytes）`,
+      );
+    }
     text = await fs.readFile(abs, "utf-8");
   } catch (e) {
     throw fsError(e, path);

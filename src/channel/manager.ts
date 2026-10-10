@@ -614,8 +614,16 @@ export class ChannelManager {
     if (!r) return false;
     this.byPairingCode.delete(r.pairingCode);
     this.bridge.detachChannel(bindingId);
-    if (r.localServer) await r.localServer.stop();
-    if (r.gwSession) await r.gwSession.stop();
+    // stop() 可能抛错（如传输已死）；清理是 best-effort，不能让抛错变成
+    // unhandled rejection 打崩进程（三处 void this.remove() 调用点都依赖这点）
+    if (r.localServer) {
+      try { await r.localServer.stop(); }
+      catch (e) { console.warn(`[channel] 清理 ${bindingId} 时 localServer.stop 失败: ${(e as Error).message}`); }
+    }
+    if (r.gwSession) {
+      try { await r.gwSession.stop(); }
+      catch (e) { console.warn(`[channel] 清理 ${bindingId} 时 gwSession.stop 失败: ${(e as Error).message}`); }
+    }
     if (r.gwClient && r.kind === "gateway") {
       r.gwClient.closeChannel(bindingId); // 通知网关（fire-and-forget）
     }

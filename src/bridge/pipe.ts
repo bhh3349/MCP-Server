@@ -118,13 +118,19 @@ export class Bridge extends EventEmitter {
         try { this.ws?.terminate(); } catch { /* ignore */ }
         return;
       }
-      this.send(
-        JSON.stringify({
-          type: "ping",
-          channels: [...this.channelIds],
-          ts: Date.now(),
-        }),
-      );
+      try {
+        this.send(
+          JSON.stringify({
+            type: "ping",
+            channels: [...this.channelIds],
+            ts: Date.now(),
+          }),
+        );
+      } catch {
+        // send 抛异常说明连接已死（close 事件尚未派发），走正常断线重连流程，
+        // 否则异常在 setInterval 回调内未捕获会导致进程崩溃。
+        this.onUnexpectedClose();
+      }
     }, hb);
     if (this.heartbeatTimer.unref) this.heartbeatTimer.unref();
   }
@@ -228,7 +234,10 @@ export class Bridge extends EventEmitter {
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      this.connect();
+      // connect() 瞬时失败时内部已安排下一次重连；此处只需吞掉 rejection，
+      // 否则 unhandled rejection 会触发 crash handler 直接退出进程。
+      // AuthError（坏 token）为永久失败，connect() 内已 emit auth_failed 且不再重连。
+      this.connect().catch(() => {});
     }, delay);
     if (this.reconnectTimer.unref) this.reconnectTimer.unref();
     this.emit("reconnect_scheduled", { attempt: this.reconnectAttempts, delayMs: delay });

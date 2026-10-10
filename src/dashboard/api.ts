@@ -155,6 +155,11 @@ function bridgeSshTerminal(ws: WebSocket, cfg: SshConfig): void {
         if (ws.readyState === ws.OPEN) ws.send(d); // 二进制帧，前端流式解码
       });
       s.on("close", () => { try { ws.close(); } catch { /* ignore */ } });
+      // ssh2 Channel 无 'error' 监听会直接 throw（uncaughtException → 进程退出），必须兜住
+      s.on("error", (e: Error) => {
+        try { ws.send(JSON.stringify({ t: "err", m: `SSH 通道错误: ${e.message}` })); } catch { /* ignore */ }
+        try { ws.close(); } catch { /* ignore */ }
+      });
     },
     (msg) => {
       try { ws.send(JSON.stringify({ t: "err", m: msg })); } catch { /* ignore */ }
@@ -174,7 +179,10 @@ function bridgeSshTerminal(ws: WebSocket, cfg: SshConfig): void {
         }
       } catch { /* 非 JSON，按原始输入处理 */ }
     }
-    if (!handled) stream?.write(data as Buffer);
+    if (!handled) {
+      // 通道已死时 write 可能同步抛错，必须兜住，否则沿 ws 监听器上抛打崩进程
+      try { stream?.write(data as Buffer); } catch { /* ignore */ }
+    }
   });
   const cleanup = () => { try { conn.end(); } catch { /* ignore */ } };
   ws.on("close", cleanup);
