@@ -561,7 +561,10 @@ export class GatewayServer {
     const rpcId = body.id !== undefined ? String(body.id) : null;
     // 通知类（无 id）无需等回包，直接转发
     if (rpcId === null) {
-      this.forwardToMcp(ch, raw);
+      // 通知（如 notifications/initialized）没有回包，不登记在途请求（否则永远不结算、
+      // 在 pending 里堆积）；只记录一次 AI 活动供"活跃度/抖动"使用。
+      this.quality.noteAiActivity(ch.id);
+      this.forwardToMcp(ch, raw, false);
       res.writeHead(202, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ ok: true }));
       return;
@@ -587,7 +590,11 @@ export class GatewayServer {
       }, 30_000);
       if (timer.unref) timer.unref();
       this.mcpPending.set(pendingKey, { resolve, timer, clientId: rpcId });
-      this.forwardToMcp(ch, JSON.stringify({ type: "msg", ch: ch.id, data: forwardRaw }));
+      // 质量打点（HTTP 通道）：用内部 id 精确配对回包。
+      // 这条路径不经过 forwardToMcp/forwardToAi，必须单独打点，
+      // 否则第三方网页 AI（走 /mcp/{id} 代理）永远测不到延迟。
+      this.quality.onAiRequest(ch.id, internalId);
+      this.forwardToMcp(ch, JSON.stringify({ type: "msg", ch: ch.id, data: forwardRaw }), false);
     });
     if (response === null) {
       res.writeHead(504, { "Content-Type": "application/json" });
@@ -609,6 +616,10 @@ export class GatewayServer {
         if (pending) {
           clearTimeout(pending.timer);
           this.mcpPending.delete(key);
+          // 质量打点（HTTP 通道）：用内部 id 结算端到端延迟。
+          // 必须在 delete 之前取 key —— 这里 key 形如 `${ch.id}:${internalId}`，
+          // 传给 tracker 时只取 internalId 部分（登记时也是这么传的）。
+          this.quality.onMcpResponse(String(msg.id), ch.id);
           // 把 id 换回客户端原来的 id
           if (pending.clientId !== null) {
             msg.id = pending.clientId;
@@ -1011,12 +1022,16 @@ export class GatewayServer {
     this.metrics.msgsRouted++;
     this.metrics.bytesRouted += raw.length;
     ch.msgsRouted++;
-    // 质量打点：MCP 回包到达，结算这条信道的端到端业务延迟
-    this.quality.onMcpResponse(ch.id);
+    // 质量打点：MCP 回包到达，结算这条信道的端到端业务延迟（WS 通道按信道配对）
+    this.quality.onMcpResponse(undefined, ch.id);
   }
 
-  /** AI → MCP：同理 */
-  private forwardToMcp(ch: Channel, raw: string): void {
+  /**
+   * AI → MCP：同理
+   * @param measureQuality false 时不打点——HTTP 代理已在调用处用内部 id 精确打点，
+   *   若这里再打一次会造成重复计数（同一请求算两次，且两次都会被回包结算）。
+   */
+  private forwardToMcp(ch: Channel, raw: string, measureQuality = true): void {
     const mcp = ch.mcp;
     if (!mcp || mcp.closed || mcp.ws.readyState !== WS_OPEN) return;
     if (mcp.ws.bufferedAmount > BACKPRESSURE_HIGH_WATER_BYTES) {
@@ -1024,8 +1039,8 @@ export class GatewayServer {
       this.closeMcp(mcp, 1013, "slow consumer");
       return;
     }
-    // 质量打点：AI 发起一次请求（回包在 forwardToAi 结算）
-    this.quality.onAiRequest(ch.id);
+    // 质量打点：仅 WS 直连通道在此打点（按信道配对）
+    if (measureQuality) this.quality.onAiRequest(ch.id);
     mcp.ws.send(raw);
     this.metrics.msgsRouted++;
     this.metrics.bytesRouted += raw.length;

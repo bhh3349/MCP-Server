@@ -26,13 +26,13 @@
  * 第三方 AI 不回应时显示"未支持"，而不是虚假的 0%。
  */
 
-/** 一条被跟踪的 AI 请求：发出时间 + 用于匹配的字段 */
+/** 一条被跟踪的 AI 请求：发出时间 + 关联键 + 归属信道 */
 interface PendingProbe {
   sentAt: number;
-  /** MCP 回包匹配的键：信道 id（一条信道同时只有一条端到端往返在途） */
+  /** 关联键（WS 为信道 id，HTTP 为内部请求 id） */
+  key: string;
+  /** 样本归属的信道 */
   chId: string;
-  /** 序号，避免连续请求互相覆盖 */
-  seq: number;
 }
 
 /** 固定容量滑动窗口的统计器 */
@@ -122,19 +122,22 @@ export class QualityTracker {
   private lastAiMsgAt = new Map<string, number>();
   /** 信道 id → ping 统计 */
   private pings = new Map<string, { sent: number; got: number; lastPingTs: number | null }>();
-  private seq = 0;
 
   constructor(opts: QualityOptions = {}) {
     this.win = opts.windowSize ?? DEFAULT_WINDOW;
     this.pingIntervalMs = opts.pingIntervalMs ?? 30_000;
   }
 
-  /** AI 发出一个请求（在 forwardToMcp 之前调用） */
-  onAiRequest(chId: string, now = Date.now()): void {
+  /**
+   * AI 发出一个请求。
+   * @param chId 信道 id（统计始终按信道聚合）
+   * @param reqKey 关联键，用于配对回包。WS 通道可传 undefined（按信道配对即可）；
+   *   HTTP 代理必须传网关内部请求 id，才能在并发请求中精确配对。
+   */
+  onAiRequest(chId: string, reqKey?: string, now = Date.now()): void {
     this.e2e.get(chId) ?? this.e2e.set(chId, new RollingStats(this.win));
     this.gaps.get(chId) ?? this.gaps.set(chId, new RollingStats(this.win));
 
-    // 到达节奏：记录与上一条的间隔
     const last = this.lastAiMsgAt.get(chId);
     if (last !== undefined) {
       const gap = now - last;
@@ -143,18 +146,34 @@ export class QualityTracker {
     }
     this.lastAiMsgAt.set(chId, now);
 
-    // 端到端：记录发起时间，回包时结算
-    this.pending.set(chId, { sentAt: now, chId, seq: ++this.seq });
+    // 在途请求按 reqKey 登记（缺省用信道 id），回包时按同一key 取出发起时刻
+    this.pending.set(reqKey ?? chId, { sentAt: now, key: reqKey ?? chId, chId });
+  }
+
+  /**
+   * 只记录一次 AI 活动（不登记在途请求），用于通知类消息。
+   * 通知没有回包，登记在途会永远不结算。
+   */
+  noteAiActivity(chId: string, now = Date.now()): void {
+    this.gaps.get(chId) ?? this.gaps.set(chId, new RollingStats(this.win));
+    const last = this.lastAiMsgAt.get(chId);
+    if (last !== undefined) {
+      const gap = now - last;
+      if (gap >= 0 && gap < 30_000) this.gaps.get(chId)!.push(gap);
+    }
+    this.lastAiMsgAt.set(chId, now);
   }
 
   /**
    * MCP 回包给 AI 时调用，结算端到端延迟。
-   * 只统计"一问一答"能配上的往返：连续多次调用时以最近一次发起为准。
+   * @param reqKey 与 onAiRequest 传入的 reqKey 相同；WS 通道传 undefined。
+   *   配对不上就跳过（不能拿别的在途请求的时刻凑数，那是错的延迟）。
    */
-  onMcpResponse(chId: string, now = Date.now()): void {
-    const p = this.pending.get(chId);
+  onMcpResponse(reqKey: string | undefined, chId: string, now = Date.now()): void {
+    const k = reqKey ?? chId;
+    const p = this.pending.get(k);
     if (!p) return;
-    this.pending.delete(chId);
+    this.pending.delete(k);
     const ms = now - p.sentAt;
     // 上限保护：超过 2 分钟的多半是 AI 发了请求没等回包就又发了，不是真实往返
     if (ms >= 0 && ms <= 120_000) this.e2e.get(chId)?.push(ms);
@@ -209,8 +228,12 @@ export class QualityTracker {
   forget(chId: string): void {
     this.e2e.delete(chId);
     this.gaps.delete(chId);
-    this.pending.delete(chId);
     this.lastAiMsgAt.delete(chId);
     this.pings.delete(chId);
+    // 该信道所有在途请求都要清掉：HTTP 通道的关联键是内部 id（不等于 chId），
+    // 只删 pending.get(chId) 会漏掉它们，内存单调增长。
+    for (const [k, p] of this.pending) {
+      if (p.chId === chId || k === chId) this.pending.delete(k);
+    }
   }
 }
