@@ -379,8 +379,16 @@ select option { background: var(--surface-2); color: var(--text-1); }
 .prov-name { font-weight: 700; font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
 .prov-model { font-size: 11px; color: var(--text-3); font-family: var(--font-m); margin-top: 3px; }
 .prov-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-/* 设置弹窗三栏（固定窗口，内容区内部滚动） */
-#modal-box.set-wide { width: 860px; height: 640px; overflow: hidden; display: flex; flex-direction: column; }
+/* 设置弹窗 / SSH 终端共用的宽弹窗。
+   用视口约束而不是写死 640px：写死的高度在矮屏上会溢出，在高屏上又浪费空间。 */
+#modal-box.set-wide {
+  width: 860px;
+  /* 上下各留 5vh，最小 420px；终端靠 flex:1 自适应，行数不够时用户可滚动回看 */
+  height: min(640px, 90vh);
+  min-height: 420px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
 .set-modal { display: flex; flex: 1; min-height: 0; position: relative; }
 /* 关闭是全局动作，不是某个 tab 的动作 —— 所以它固定在弹窗右上角，
    不随左侧 tab 切换而移动位置，闭眼也能摸到。 */
@@ -500,15 +508,64 @@ html[data-lang="zh"] .lang-en { display: none !important; }
 html[data-lang="en"] .lang-zh { display: none !important; }
 /* 页面主标题：>24px 起收紧字距，中文用 1.15em 给排版留呼吸 */
 .ov-title { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
-.ov-top { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.2fr); gap: 12px; flex-shrink: 0; height: 126px; }
-/* 顶排卡片内部压紧（mcpcore 保持原布局） */
-.ov-top .card:not(.mcpcore) { padding: 10px 14px; display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; }
-.ov-top .card:not(.mcpcore) .stat-num { font-size: 26px; }
-.ov-top .card:not(.mcpcore) .spark { margin-top: 4px; height: 22px; }
-.ov-top .card:not(.mcpcore) .gw-foot { margin-top: auto; padding-top: 4px; }
-.ov-top .card:not(.mcpcore) .stat-sub { margin-top: 4px; }
-.ov-top .card:not(.mcpcore) .br-pipes { margin-top: auto; padding-top: 4px; }
-.ov-top .card.mcpcore { overflow: hidden; }
+/* 顶排不再写死"4 张卡 4 列"。之前是硬编码 4 列，加第 5 个模块就崩：
+   信道卡被挤到第二行压成半高，下方留一大片空。
+   现在 8 个身位，正好排满一行：
+     MCP CORE 2（签名卡：仪表 + 三行文字） · GATEWAY 1 · AI 2（两层子指标） · BRIDGE 1（只有一个开关） · 信道 2（要看列表名）
+   宽度按内容需求分配，不平均分 —— 这是这次重排的核心。
+   降列断点：8×150px 底线 < 1240px 时降为 4 列。 */
+.ov-top {
+  display: grid;
+  /* 不是等分的 repeat(8, 1fr) —— 等分会逼 BRIDGE 那种只有一个开关的卡
+     空出大片死白。这里按内容实际需要的宽度排：窄卡窄、宽卡宽。 */
+  grid-template-columns:
+    minmax(0, 2fr)      /* MCP CORE */
+    minmax(0, 1.1fr)    /* GATEWAY：底部有一行说明文字，需要能读全 */
+    minmax(0, 1.9fr)    /* AI 延迟 */
+    minmax(0, 1.05fr)   /* BRIDGE：只有开关，不该占宽 */
+    minmax(0, 1.9fr);   /* 信道 */
+  gap: var(--sp-3);
+  flex-shrink: 0;
+  align-items: stretch;
+}
+.ov-top > .mcpcore, .ov-top > .aiq-card, .ov-top > .ch-card { grid-column: auto; }
+.ov-top > .bridge-card { grid-column: auto; }
+/* 窄屏降列：先并成 2 列，宽卡占满一行 */
+@media (max-width: 1240px) {
+  .ov-top { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ov-top > .mcpcore, .ov-top > .aiq-card, .ov-top > .ch-card { grid-column: span 2; }
+}
+@media (max-width: 720px) {
+  .ov-top { grid-template-columns: minmax(0, 1fr); }
+  .ov-top > .mcpcore, .ov-top > .aiq-card, .ov-top > .ch-card { grid-column: auto; }
+}
+/* 顶排卡片内部：统一成「眉标 → 主体 → 贴底」三段式。
+   之前每张卡各用一套占位机制（margin-top:auto / justify-content / 固定 padding），
+   同一行里底部余量从 -3px 到 +9px 不等，视觉上高低不齐。
+   现在统一：眉标贴顶、主数字紧随、尾部元素一律贴底，卡与卡之间就对齐了。
+   注意 :not(.mcpcore) —— 签名卡是横向布局（文字左 + 仪表右），
+   被拽进纵向 flex 会把仪表挤到中间。 */
+.ov-top > .card:not(.mcpcore) {
+  padding: var(--sp-3) var(--sp-4);
+  display: flex; flex-direction: column; gap: var(--sp-1);
+  overflow: hidden; min-height: 138px;
+}
+.ov-top > .card .ov-eyebrow { flex-shrink: 0; }
+.ov-top > .card .stat-num { font-size: 26px; line-height: 1.1; flex-shrink: 0; }
+/* 尾部元素统一贴底：无论内容长短，最后一行的基线在各卡之间是一致的 */
+.ov-top > .card:not(.mcpcore) > .gw-foot,
+.ov-top > .card:not(.mcpcore) > .aiq-grid,
+.ov-top > .card:not(.mcpcore) > .br-pipes,
+.ov-top > .card:not(.mcpcore) > .ch-list { margin-top: auto; }
+/* 图形元素不参与 auto 分配，避免被压扁 */
+.ov-top > .card:not(.mcpcore) > .spark { flex-shrink: 0; height: 26px; }
+/* sparkline 紧跟主数字，不让它漂在卡片中间形成一段死白 */
+.ov-top > .card:not(.mcpcore) > .spark { margin-top: var(--sp-1); }
+.ov-top > .card:not(.mcpcore) > .bridge-row { flex-shrink: 0; padding-top: var(--sp-2); }
+.ov-top > .card.mcpcore { overflow: hidden; min-height: 138px; }
+.ov-top > .aiq-grid { flex-wrap: nowrap; }
+.ov-top > .aiq-cell { min-width: 0; }
+.ov-top > .aiq-cell b { overflow: hidden; text-overflow: ellipsis; }
 .ov-main {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -519,7 +576,7 @@ html[data-lang="en"] .lang-zh { display: none !important; }
 .chat-placeholder { border: 1px dashed rgba(255,255,255,.08); border-radius: var(--radius); min-height: 0; }
 .chat-card { min-height: 0; padding: 12px 14px; display: flex; flex-direction: column; height: 100%; }
 .chat-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-shrink: 0; }
-.chat-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #a78bfa); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; overflow: hidden; }
+.chat-avatar { width: 32px; height: 32px; border-radius: var(--r-pill); background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; overflow: hidden; }
 .chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .chat-sub { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 5px; margin-top: 2px; }
 .chat-msgs { flex: 1; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 6px 2px; justify-content: flex-start; }
@@ -556,10 +613,14 @@ html[data-lang="en"] .lang-zh { display: none !important; }
    所以卡片本身保持中性 —— 不再叠一层紫渐变，那是两个强调在打架。 */
 .mcpcore { display: flex; align-items: stretch; justify-content: space-between;
   background: var(--surface-1);
-  border-color: var(--accent-line); }
-.mcpcore-main { display: flex; flex-direction: column; justify-content: flex-start; }
+  border-color: var(--accent-line);
+  /* 与同行其它卡用同一套内边距，否则"33 个工具在线"这行会比别人高 17px */
+  padding: var(--sp-3) var(--sp-4); }
+/* 纵向撑满卡高，否则 .mcpcore-sub 的 margin-top:auto 无处可用，
+   "33 个工具在线"会浮在中间而不是贴底。 */
+.mcpcore-main { display: flex; flex-direction: column; justify-content: flex-start; align-self: stretch; min-height: 0; }
 .mcpcore-status { font-size: 22px; font-weight: 700; margin: 4px 0 2px; letter-spacing: -.01em; }
-.mcpcore-sub { font-size: 11px; color: var(--text3); margin-top: auto; padding-top: 4px; }
+.mcpcore-sub { font-size: 11px; color: var(--text3); margin-top: auto; padding-top: var(--sp-2); }
 .mcpcore-sub b { color: var(--text); font-size: 12px; }
 .mcpcore-gauge { flex-shrink: 0; position: relative; align-self: center; }
 .gauge-label { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
@@ -567,10 +628,14 @@ html[data-lang="en"] .lang-zh { display: none !important; }
 .gauge-label span { font-size: 9px; color: var(--text3); }
 
 /* 网关卡 */
-.gw-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+.gw-foot { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); margin-top: 6px; min-width: 0; }
+/* 窄身里说明文字必须单行省略，折行会把 sparkline 顶下去 */
+.gw-foot .hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gw-foot .mono { flex-shrink: 0; white-space: nowrap; }
 
-/* AI 质量卡：抖动 + 样本两个小指标 */
-.aiq-grid { display: flex; gap: 6px; margin-top: 8px; }
+/* AI 质量卡：抖动 + 样本两个小指标。
+   1 列宽装不下三层内容，所以给它 2 列身位 —— 宽度按内容需求分配，不平均分。 */
+.aiq-grid { display: flex; gap: var(--sp-2); margin-top: auto; padding-top: var(--sp-2); }
 .aiq-cell {
   flex: 1; display: flex; flex-direction: column; gap: 2px;
   padding: 6px 8px; border-radius: var(--r-input);
@@ -580,7 +645,7 @@ html[data-lang="en"] .lang-zh { display: none !important; }
 
 /* Bridge 管道条 */
 .br-pipes { margin-top: 8px; }
-.pipe-bars { display: flex; gap: 6px; margin-top: 6px; }
+.pipe-bars { display: flex; gap: 6px; margin-top: var(--sp-2); }
 .pipe-bar { flex: 1; height: 5px; border-radius: 3px; background: var(--panel2); overflow: hidden; }
 .pipe-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--teal), var(--green)); }
 
@@ -841,8 +906,18 @@ canvas.chart { width: 100%; display: block; }
 .gw-adv summary { font-size: 12px; color: var(--text2); cursor: pointer; user-select: none; }
 .gw-adv summary:hover { color: var(--accent); }
 /* SSH 终端 */
-.ssh-term { height: 470px; background: var(--surface-sunken); border: 1px solid var(--hairline); border-radius: var(--r-card); padding: 8px; overflow: hidden; }
+/* SSH 终端容器：不再写死 470px。写死的高度装不下长输出，
+   部署日志一长就被 overflow:hidden 裁掉。让它吃掉弹窗剩下的所有空间。 */
+.ssh-term {
+  flex: 1; min-height: 0;
+  background: var(--surface-sunken);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-card);
+  padding: var(--sp-2);
+  overflow: hidden;
+}
 .ssh-term .xterm { height: 100%; }
+.ssh-term .xterm-viewport { background: transparent !important; }
 
 /* ============================================================
    可访问性地板 —— 不做就是缺陷，不做也不宣扬

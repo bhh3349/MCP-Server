@@ -171,7 +171,9 @@ async function gwDeployRun() {
   const command = custom || gwDeployCommand();
   localStorage.setItem("gwSsh", JSON.stringify({ host: $("#gw-ip").value.trim(), sshPort: $("#gw-sshport").value.trim(), username: $("#gw-user").value.trim() }));
   // 用户主动点的按钮，不走审批，直接弹终端执行
-  openSshTerminal({ title: termText("一键部署", "Deploy"), runCommand: command });
+  // 用双语 span 而不是 termText()：termText 在打开时就定死语言，
+  // 弹窗开着时切语言标题不会跟着变。
+  openSshTerminal({ title: "<span class='lang-zh'>一键部署</span><span class='lang-en'>Deploy</span>", runCommand: command });
 }
 /** 内置 SSH 终端（xterm.js + WebSocket + ssh2 shell） */
 /** 内置 SSH 终端（xterm.js + WebSocket + ssh2 shell）；传 runCommand 则连上后自动执行（用于一键部署） */
@@ -180,18 +182,33 @@ function termText(zh, en) {
   return (document.documentElement.dataset.lang === "en" ? en : zh);
 }
 async function openSshTerminal(opts = {}) {
-  const { title = "SSH <span class='lang-zh'>终端</span><span class='lang-en'>Terminal</span>", runCommand = "" } = opts;
+  // title 是我们自己拼的双语 HTML（不是用户输入），不能走 esc() ——
+  // esc() 会把 <span class="lang-zh"> 转义成可见源码文字。
+  // 调用方传纯文本（"一键部署"）也能正常显示，两种都能吃。
+  const { title = "<span class='lang-zh'>SSH 终端</span><span class='lang-en'>SSH Terminal</span>", runCommand = "" } = opts;
   const cfg = readSshCfg();
   if (!cfg.password) { toast("<span class='lang-zh'>请填写</span><span class='lang-en'>Please Fill</span> SSH <span class='lang-zh'>密码</span><span class='lang-en'>Password</span>", false); return; }
   let token;
   try {
     token = (await api("/api/ssh/terminal", { method: "POST", body: cfg })).token;
   } catch (e) { toast(e.message, false); return; }
-  openModal(`<div class="modal-title" style="margin-bottom:10px">${esc(title)} <span class="hint mono" style="font-weight:400">${esc(cfg.username)}@${esc(cfg.host)}:${cfg.sshPort}</span></div>
+  // title 是我们拼的双语 HTML，不能 esc（username/host 是用户输入，必须 esc）
+  openModal(`<div class="modal-title" style="margin-bottom:10px">${title} <span class="hint mono" style="font-weight:400">${esc(cfg.username)}@${esc(cfg.host)}:${cfg.sshPort}</span></div>
     <div id="ssh-term" class="ssh-term"></div>
     <div class="modal-actions"><button class="btn ghost sm" id="ssh-close"><span class="lang-zh">断开</span><span class="lang-en">Disconnect</span></button></div>`);
   $("#modal-box").classList.add("set-wide");
-  const term = new Terminal({ cursorBlink: true, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", theme: { background: "#0b0b10" } });
+  // 终端配色跟随主题：写死 #0b0b10 在亮色主题下是一块突兀的黑斑。
+  const termBg = themeColor("--surface-sunken", "#0b0b10");
+  const termFg = themeColor("--text-1", "#eceef3");
+  const term = new Terminal({
+    cursorBlink: true, fontSize: 13, fontFamily: "'JetBrains Mono', monospace",
+    theme: {
+      background: termBg, foreground: termFg,
+      // 输出里大量用绿色 ✓ 和红色 ✗，这两档必须跟着主题走
+      green: themeColor("--st-ok", "#3ecf8e"), red: themeColor("--st-bad", "#f0656f"),
+      yellow: themeColor("--st-warn", "#e0a03a"),
+    },
+  });
   const fitAddon = new FitAddon.FitAddon();
   term.loadAddon(fitAddon);
   term.open($("#ssh-term"));
@@ -612,9 +629,16 @@ function drawThroughput(cv, req, ok, floorMax) {
   // 否则服务刚启动只有几个点时标签就在骗人。
   const spanSec = Math.max(1, Math.round((n - 1) * POLL_SEC));
   ctx.fillStyle = C_TICK;
+  // 跨度很小时相邻刻度会取整成同一个数（-2s/-1s/-1s）。重复标签比缺标签更糟：
+  // 只在秒数真的与上一格不同的时候才画，否则留空。
+  let lastOff = Infinity;
   [0, 1, 2, 3].forEach((k) => {
-    const t = `-${Math.max(0, spanSec - k * (spanSec / 3))}s`;
-    ctx.fillText(k === 3 ? "NOW" : t, padL + (cw / 3) * k - 8, h - 5);
+    const off = Math.max(0, Math.round(spanSec - k * (spanSec / 3)));
+    if (k < 3) {
+      if (off === lastOff) return;
+      lastOff = off;
+    }
+    ctx.fillText(k === 3 ? "NOW" : `-${off}s`, padL + (cw / 3) * k - 8, h - 5);
   });
 }
 
@@ -658,7 +682,7 @@ const Overview = {
         <canvas class="spark" id="ov-spark" style="width:100%"></canvas>
         <div class="gw-foot"><span class="hint"><span class="lang-zh">支持自动故障转移</span><span class="lang-en">Auto-failover</span></span><span class="mono hint" id="ov-lat2">– ms</span></div>
       </div>
-      <div class="card staleable" title="AI 发请求到拿到 MCP 回包的完整往返，由网关测量">
+      <div class="card aiq-card staleable" title="AI 发请求到拿到 MCP 回包的完整往返，由网关测量">
         <div class="ov-eyebrow">AI <span class="pill gray sm" id="ov-aiq-pill"><span class="lang-zh">待采样</span><span class="lang-en">Sampling</span></span></div>
         <div class="stat-num"><span id="ov-aiq-lat">–</span><small> ms</small></div>
         <div class="gw-foot"><span class="hint"><span class="lang-zh">端到端调用延迟</span><span class="lang-en">End-to-end latency</span></span><span class="mono hint" id="ov-aiq-p95">– ms</span></div>
@@ -667,7 +691,7 @@ const Overview = {
           <div class="aiq-cell"><span class="hint"><span class="lang-zh">样本</span><span class="lang-en">Samples</span></span><b class="mono" id="ov-aiq-n">–</b></div>
         </div>
       </div>
-      <div class="card">
+      <div class="card bridge-card">
         <div class="ov-eyebrow">BRIDGE <span class="pill green sm" id="ov-br-pill"><span class="lang-zh">在线</span><span class="lang-en">Online</span></span></div>
         <div class="bridge-row">
           <span class="bridge-state" id="ov-br-state"><span class="lang-zh">已开启</span><span class="lang-en">On</span></span>
