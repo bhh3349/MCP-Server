@@ -10,11 +10,18 @@
  */
 import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { WebSocket } from "ws";
 import { GatewayServer, generateGatewayToken } from "../../src/gateway/server.js";
 import { ChannelManager } from "../../src/channel/manager.js";
 import { Bridge } from "../../src/bridge/pipe.js";
 import { buildServer } from "../../src/server.js";
+
+// 扩展目录按仓库实际位置解析（原来硬编码成 Linux 绝对路径，
+// 在别的机器上目录不存在 → 静默加载 0 个扩展，插件/技能/连接器完全没测到）。
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const EXTENSIONS_DIR = path.join(REPO_ROOT, "extensions");
 
 const TOKEN = generateGatewayToken();
 let gw: GatewayServer;
@@ -95,7 +102,7 @@ before(async () => {
   const dummyBridge = new Bridge({ gatewayUrl: "local", autoReconnect: false });
   mgr = new ChannelManager(
     dummyBridge,
-    async () => (await buildServer({ extensionsDir: "/home/hatch/workspace/MCP-Server/extensions" })).server,
+    async () => (await buildServer({ extensionsDir: EXTENSIONS_DIR })).server,
   );
 });
 
@@ -182,6 +189,18 @@ describe("MCP 协议穿透网关", () => {
     const names = (list.result?.tools ?? []).map((t: any) => t.name);
     assert.ok(names.includes("exec"), names.join(","));
     assert.ok(names.includes("read_file"));
+    // 回归防护：扩展目录配错时会静默加载 0 个，tools/list 看起来依然正常，
+    // 只有内置工具。真正能暴露问题的是 list_skills —— 扩展注册成了工具。
+    assert.ok(
+      names.includes("list_skills"),
+      `扩展未加载：list_skills 缺失，tools=${names.join(",")}`,
+    );
+    assert.ok(names.includes("list_connectors"), `连接器未加载：${names.join(",")}`);
+
+    const skills = await ai.call("tools/call", { name: "list_skills", arguments: {} });
+    const skillText = skills.result?.content?.[0]?.text ?? "";
+    assert.ok(skillText.includes("mcp-guide"), `mcp-guide 技能缺失: ${skillText.slice(0, 200)}`);
+    assert.ok(skillText.includes("pdf-read"), `pdf-read 技能缺失: ${skillText.slice(0, 200)}`);
 
     const h = await ai.call("tools/call", {
       name: "exec",
