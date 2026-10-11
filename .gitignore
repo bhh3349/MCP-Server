@@ -9,3 +9,6 @@ src-tauri/gen/
 src-tauri/sidecar/
 release/
 release-electron/
+
+# 测试产物（由 npm run soak / doctor 生成，可再生）
+reports/

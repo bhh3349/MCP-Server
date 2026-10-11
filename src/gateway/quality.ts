@@ -236,4 +236,18 @@ export class QualityTracker {
       if (p.chId === chId || k === chId) this.pending.delete(k);
     }
   }
+
+  /**
+   * 内部各 Map 的条目数（仅供 soak/诊断观测长期运行是否单调增长）。
+   * 不参与业务逻辑，属于可观测性接口。
+   */
+  internalSizes(): { e2e: number; gaps: number; lastAiMsgAt: number; pings: number; pending: number } {
+    return {
+      e2e: this.e2e.size,
+      gaps: this.gaps.size,
+      lastAiMsgAt: this.lastAiMsgAt.size,
+      pings: this.pings.size,
+      pending: this.pending.size,
+    };
+  }
 }
